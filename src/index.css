@@ -147,11 +147,10 @@ img { display: block; max-width: 100%; }
 /* ===== Hero Slider ===== */
 .slider {
   position: relative;
-  margin: 66px var(--gut) 0;
-  border-radius: 16px;
+  margin-top: 54px;
   overflow: hidden;
   background: var(--ink);
-  height: 500px;
+  height: clamp(520px, 68vh, 740px);
   isolation: isolate;
 }
 .slider-track { display: contents; }
@@ -165,24 +164,35 @@ img { display: block; max-width: 100%; }
   opacity: 1;
   pointer-events: auto;
 }
-.slide .ph {
+.slide .ph,
+.slide-img {
   position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
   transform: scale(1.04);
   transition: transform 6s ease-out;
 }
-.slide.is-active .ph { transform: scale(1.10); }
+.slide.is-active .ph,
+.slide.is-active .slide-img { transform: scale(1.10); }
 .slide::after {
   content: ""; position: absolute; inset: 0;
-  background: linear-gradient(180deg,
-    oklch(0.10 0.008 50 / 0.20) 0%,
-    oklch(0.10 0.008 50 / 0.05) 40%,
-    oklch(0.10 0.008 50 / 0.65) 100%);
+  background: linear-gradient(160deg,
+    oklch(0.10 0.008 50 / 0.22) 0%,
+    transparent 45%,
+    oklch(0.10 0.008 50 / 0.18) 100%);
 }
 .slide-content {
   position: absolute;
-  right: 0; left: 0; bottom: 0;
+  right: clamp(20px, 4vw, 56px);
+  bottom: clamp(28px, 5vh, 56px);
   z-index: 2;
-  padding: 36px 40px;
+  padding: 28px 32px;
+  background: oklch(0.06 0.006 50 / 0.52);
+  backdrop-filter: blur(28px) saturate(1.4);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  border: 1px solid oklch(1 0 0 / 0.18);
+  border-radius: 20px;
+  max-width: 420px;
   color: var(--bg);
 }
 .slide-tag {
@@ -736,14 +746,18 @@ footer a:hover { color: var(--ink); }
   .cats-label, .cats-toolbar { display: none; }
   footer { grid-template-columns: 1fr; text-align: center; }
   footer .f-left, footer .f-right { text-align: center; direction: rtl; }
+  .slide-content {
+    right: 16px;
+    left: 16px;
+    bottom: 20px;
+    max-width: none;
+    padding: 20px 22px;
+    border-radius: 16px;
+  }
 }
 
 /* ===== slide-img / card-img (real image support) ===== */
-.slide-img {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
-  object-fit: cover;
-}
+/* .slide-img styles merged into .slide .ph block above */
 .card-img {
   position: absolute; inset: 0;
   width: 100%; height: 100%;

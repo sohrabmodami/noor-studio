@@ -3,12 +3,13 @@ import { useData } from '../../context/DataContext';
 
 export default function StatsEditor() {
   const { data, update } = useData();
+  const [eyebrow, setEyebrow] = useState(data.stats.eyebrow);
   const [lead, setLead] = useState(data.stats.lead);
   const [items, setItems] = useState(data.stats.items);
   const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
-    update('stats', { lead, items });
+    update('stats', { eyebrow, lead, items });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -27,7 +28,14 @@ export default function StatsEditor() {
       </div>
 
       <div className="ae-card">
+        <span className="ae-label-sm">عنوان بخش</span>
         <div className="af-group">
+          <label className="af-label">برچسب کوچک (eyebrow)</label>
+          <input className="af-input" value={eyebrow}
+            onChange={e => setEyebrow(e.target.value)}
+            placeholder="۰۲ / دربارهٔ ما" />
+        </div>
+        <div className="af-group" style={{ marginTop: 12 }}>
           <label className="af-label">متن معرفی</label>
           <textarea className="af-textarea" value={lead}
             onChange={e => setLead(e.target.value)} />

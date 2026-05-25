@@ -13,10 +13,10 @@ export default function CardGrid() {
       <CategoryBar active={activeFilter} onChange={setActiveFilter} />
 
       <SectionHeading
-        eyebrow="۰۱ / آثار منتخب"
-        title="قاب‌هایی که "
-        accent="دوست"
-        titleAfter=" داریم."
+        eyebrow={data.gallery.eyebrow}
+        title={data.gallery.title}
+        accent={data.gallery.titleAccent}
+        titleAfter={data.gallery.titleAfter}
         id="work"
         right={
           <button className="sec-head-sort">

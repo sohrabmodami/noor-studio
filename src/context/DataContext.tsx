@@ -17,9 +17,23 @@ export interface AppData {
   slides: Slide[];
   cards: CardData[];
   categories: CategoryItem[];
+  gallery: {
+    eyebrow: string;
+    title: string;
+    titleAccent: string;
+    titleAfter: string;
+  };
   stats: {
+    eyebrow: string;
     lead: string;
     items: StatItem[];
+  };
+  processSection: {
+    eyebrow: string;
+    title: string;
+    titleAccent: string;
+    titleAfter: string;
+    subtitle: string;
   };
   process: ProcessStep[];
   contact: {
@@ -51,13 +65,27 @@ const DEFAULT_DATA: AppData = {
   slides: defaultSlides,
   cards: defaultCards,
   categories: defaultCategories,
+  gallery: {
+    eyebrow: '۰۱ / آثار منتخب',
+    title: 'قاب‌هایی که ',
+    titleAccent: 'دوست',
+    titleAfter: ' داریم.',
+  },
   stats: {
+    eyebrow: '۰۲ / دربارهٔ ما',
     lead: 'اتاق‌هایی آرام، نوردهی‌های طولانی، و احترامِ عمیق به سوژه.',
     items: [
       { num: '۰۷', label: 'سال فعالیت' },
       { num: '۱۴۲', label: 'قاب در آرشیو' },
       { num: '۱۹', label: 'جلد مجله' },
     ],
+  },
+  processSection: {
+    eyebrow: '۰۳ / روند کار',
+    title: 'یک ',
+    titleAccent: 'استودیوی آهسته',
+    titleAfter: '.',
+    subtitle: 'حدود ۴ هفته برای هر پروژه',
   },
   process: [
     { num: '۰۱', label: 'گفتگو', title: 'یک ساعت، بدون دوربین', desc: 'می‌نشینیم و گوش می‌دهیم. می‌فهمیم عکس می‌خواهد چه باشد، و کجا برسد.' },
@@ -87,7 +115,13 @@ function loadData(): AppData {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      return { ...DEFAULT_DATA, ...parsed };
+      return {
+        ...DEFAULT_DATA,
+        ...parsed,
+        gallery: { ...DEFAULT_DATA.gallery, ...parsed.gallery },
+        stats: { ...DEFAULT_DATA.stats, ...parsed.stats },
+        processSection: { ...DEFAULT_DATA.processSection, ...parsed.processSection },
+      };
     }
   } catch {}
   return DEFAULT_DATA;

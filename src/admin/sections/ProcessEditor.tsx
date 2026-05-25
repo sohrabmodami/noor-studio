@@ -3,14 +3,19 @@ import { useData, type ProcessStep } from '../../context/DataContext';
 
 export default function ProcessEditor() {
   const { data, update } = useData();
+  const [section, setSection] = useState(data.processSection);
   const [steps, setSteps] = useState<ProcessStep[]>(data.process);
   const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
+    update('processSection', section);
     update('process', steps);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
+
+  const setS = (field: keyof typeof section, val: string) =>
+    setSection(prev => ({ ...prev, [field]: val }));
 
   const updateStep = (i: number, field: keyof ProcessStep, val: string) => {
     setSteps(prev => prev.map((s, idx) => idx === i ? { ...s, [field]: val } : s));
@@ -23,6 +28,37 @@ export default function ProcessEditor() {
         <button className={`af-btn-primary${saved ? ' af-btn-saved' : ''}`} onClick={handleSave}>
           {saved ? 'ذخیره شد ✓' : 'ذخیره'}
         </button>
+      </div>
+
+      <div className="ae-card">
+        <span className="ae-label-sm">عنوان بخش</span>
+        <div className="ae-fields-grid">
+          <div className="af-group">
+            <label className="af-label">برچسب کوچک (eyebrow)</label>
+            <input className="af-input" value={section.eyebrow}
+              onChange={e => setS('eyebrow', e.target.value)} />
+          </div>
+          <div className="af-group">
+            <label className="af-label">زیرعنوان سمت چپ</label>
+            <input className="af-input" value={section.subtitle}
+              onChange={e => setS('subtitle', e.target.value)} />
+          </div>
+          <div className="af-group">
+            <label className="af-label">متن عنوان (قبل از accent)</label>
+            <input className="af-input" value={section.title}
+              onChange={e => setS('title', e.target.value)} />
+          </div>
+          <div className="af-group">
+            <label className="af-label">بخش طلایی عنوان</label>
+            <input className="af-input" value={section.titleAccent}
+              onChange={e => setS('titleAccent', e.target.value)} />
+          </div>
+          <div className="af-group">
+            <label className="af-label">ادامه عنوان (بعد از accent)</label>
+            <input className="af-input" value={section.titleAfter}
+              onChange={e => setS('titleAfter', e.target.value)} />
+          </div>
+        </div>
       </div>
 
       {steps.map((step, i) => (

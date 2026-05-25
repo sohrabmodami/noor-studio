@@ -18,8 +18,8 @@ function PublicSite() {
     <>
       <Loader />
       <Header />
+      <HeroSlider />
       <div className="page">
-        <HeroSlider />
         <CardGrid />
         <Stats />
         <Process />

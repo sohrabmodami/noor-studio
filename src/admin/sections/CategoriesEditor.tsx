@@ -3,14 +3,19 @@ import { useData, type CategoryItem } from '../../context/DataContext';
 
 export default function CategoriesEditor() {
   const { data, update } = useData();
+  const [gallery, setGallery] = useState(data.gallery);
   const [cats, setCats] = useState<CategoryItem[]>(data.categories);
   const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
+    update('gallery', gallery);
     update('categories', cats);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
+
+  const setG = (field: keyof typeof gallery, val: string) =>
+    setGallery(prev => ({ ...prev, [field]: val }));
 
   const updateCat = (i: number, field: keyof CategoryItem, val: string) => {
     setCats(prev => prev.map((c, idx) => idx === i ? { ...c, [field]: val } : c));
@@ -33,6 +38,32 @@ export default function CategoriesEditor() {
           <button className={`af-btn-primary${saved ? ' af-btn-saved' : ''}`} onClick={handleSave}>
             {saved ? 'ذخیره شد ✓' : 'ذخیره'}
           </button>
+        </div>
+      </div>
+
+      <div className="ae-card">
+        <span className="ae-label-sm">عنوان بخش آثار</span>
+        <div className="ae-fields-grid">
+          <div className="af-group">
+            <label className="af-label">برچسب کوچک (eyebrow)</label>
+            <input className="af-input" value={gallery.eyebrow}
+              onChange={e => setG('eyebrow', e.target.value)} />
+          </div>
+          <div className="af-group">
+            <label className="af-label">متن عنوان (قبل از accent)</label>
+            <input className="af-input" value={gallery.title}
+              onChange={e => setG('title', e.target.value)} />
+          </div>
+          <div className="af-group">
+            <label className="af-label">بخش طلایی عنوان</label>
+            <input className="af-input" value={gallery.titleAccent}
+              onChange={e => setG('titleAccent', e.target.value)} />
+          </div>
+          <div className="af-group">
+            <label className="af-label">ادامه عنوان (بعد از accent)</label>
+            <input className="af-input" value={gallery.titleAfter}
+              onChange={e => setG('titleAfter', e.target.value)} />
+          </div>
         </div>
       </div>
 

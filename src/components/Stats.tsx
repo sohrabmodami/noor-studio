@@ -7,7 +7,7 @@ export default function Stats() {
   return (
     <section className="stats" id="about">
       <div className="stats-lead">
-        <span className="stats-eyebrow">۰۲ / دربارهٔ ما</span>
+        <span className="stats-eyebrow">{data.stats.eyebrow}</span>
         {lead}
       </div>
       {items.map((stat, i) => (

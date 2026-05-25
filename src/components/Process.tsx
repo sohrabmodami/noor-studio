@@ -4,16 +4,17 @@ import { useData } from '../context/DataContext';
 export default function Process() {
   const { data } = useData();
   const steps = data.process;
+  const ps = data.processSection;
 
   return (
     <>
       <SectionHeading
-        eyebrow="۰۳ / روند کار"
-        title="یک "
-        accent="استودیوی آهسته"
-        titleAfter="."
+        eyebrow={ps.eyebrow}
+        title={ps.title}
+        accent={ps.titleAccent}
+        titleAfter={ps.titleAfter}
         id="process"
-        right={<span style={{ fontSize: 13, color: 'var(--muted)' }}>حدود ۴ هفته برای هر پروژه</span>}
+        right={<span style={{ fontSize: 13, color: 'var(--muted)' }}>{ps.subtitle}</span>}
       />
       <section className="process">
         {steps.map(step => (
