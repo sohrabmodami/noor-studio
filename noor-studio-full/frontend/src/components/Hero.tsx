@@ -1,46 +1,82 @@
+import { useState, useEffect, useRef } from 'react';
 import './Hero.css';
 
+const slides = [
+  {
+    tag: 'عکاسی عروسی',
+    bg: 'linear-gradient(145deg,#e8c5bc 0%,#d4a090 50%,#c9907e 100%)',
+  },
+  {
+    tag: 'پرتره حرفه‌ای',
+    bg: 'linear-gradient(145deg,#dcc4bb 0%,#c9a898 50%,#b89080 100%)',
+  },
+  {
+    tag: 'عکاسی خانوادگی',
+    bg: 'linear-gradient(145deg,#f0d5cc 0%,#e0b8ac 50%,#d4a090 100%)',
+  },
+];
+
 export default function Hero() {
+  const [idx, setIdx] = useState(0);
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const touchStart = useRef(0);
+
+  const go = (n: number) => setIdx(((n % slides.length) + slides.length) % slides.length);
+
+  const startAuto = () => {
+    if (timer.current) clearInterval(timer.current);
+    timer.current = setInterval(() => setIdx(i => (i + 1) % slides.length), 4500);
+  };
+
+  useEffect(() => {
+    startAuto();
+    return () => { if (timer.current) clearInterval(timer.current); };
+  }, []);
+
   return (
     <section id="hero" className="hero">
-      <div className="hero-blob" />
-      <div className="hero-blob2" />
-      <div className="hero-inner">
-        <div className="hero-text">
-          <div className="hero-badge">✦ استودیو عکاسی نور</div>
-          <h1 className="hero-title">
-            لحظه‌هایتان را<br />
-            <strong>برای همیشه</strong><br />
-            نگه می‌داریم
-          </h1>
-          <p className="hero-desc">
-            عکاسی حرفه‌ای در دسته‌های عروسی، پرتره، خانوادگی و تجاری — با صمیمیت و دقت.
-          </p>
-          <div className="hero-btns">
-            <a href="#gallery" className="btn-main">مشاهده گالری</a>
-            <a href="#cta" className="btn-outline">مشاوره رایگان</a>
+      <div
+        className="hero-slider"
+        onTouchStart={e => { touchStart.current = e.touches[0].clientX; }}
+        onTouchEnd={e => {
+          const dx = e.changedTouches[0].clientX - touchStart.current;
+          if (Math.abs(dx) > 40) { go(idx + (dx > 0 ? -1 : 1)); startAuto(); }
+        }}
+      >
+        {slides.map((s, i) => (
+          <div key={i} className={`hero-slide${i === idx ? ' active' : ''}`}>
+            <div className="hero-slide-bg" style={{ background: s.bg }} />
+            <div className="hero-slide-overlay" />
+          </div>
+        ))}
+
+        {/* Glass box */}
+        <div className="hero-glass">
+          <span className="hero-glass-dot" />
+          <div className="hero-glass-text">
+            <span className="hero-glass-label">استودیو نور</span>
+            <span className="hero-glass-tag">{slides[idx].tag}</span>
           </div>
         </div>
-        <div className="hero-visual">
-          <div className="hero-frame">
-            <svg viewBox="0 0 80 80" fill="none">
-              <circle cx="40" cy="40" r="28" stroke="#c97b6b" strokeWidth="3"/>
-              <circle cx="40" cy="40" r="12" stroke="#c97b6b" strokeWidth="2"/>
-              <rect x="18" y="28" width="44" height="32" rx="6" stroke="#c97b6b" strokeWidth="2.5"/>
-              <path d="M30 28V24h20v4" stroke="#c97b6b" strokeWidth="2"/>
-            </svg>
-          </div>
-          <div className="hero-tag-float">
-            <div className="dot" />
-            <div>
-              <span>در دسترس برای رزرو</span>
-              <small>خرداد ۱۴۰۵</small>
-            </div>
-          </div>
-          <div className="hero-stat-float">
-            <div className="num">+۵۰</div>
-            <small>پروژه موفق</small>
-          </div>
+
+        {/* Arrows */}
+        <button className="hero-arrow hero-arrow-r" onClick={() => { go(idx - 1); startAuto(); }} aria-label="قبلی">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+        </button>
+        <button className="hero-arrow hero-arrow-l" onClick={() => { go(idx + 1); startAuto(); }} aria-label="بعدی">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m9 18 6-6-6-6" />
+          </svg>
+        </button>
+
+        {/* Dots */}
+        <div className="hero-dots">
+          {slides.map((_, i) => (
+            <button key={i} className={`hero-dot${i === idx ? ' active' : ''}`}
+              onClick={() => { go(i); startAuto(); }} />
+          ))}
         </div>
       </div>
     </section>
