@@ -1,4 +1,7 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+
+// Empty string = same origin (Nginx proxies /api to backend)
+const API = import.meta.env.VITE_API_URL || '';
 
 export interface Category {
   id: string;
@@ -10,7 +13,7 @@ export interface GalleryItem {
   title: string;
   categoryId: string;
   description: string;
-  imageUrl: string | null; // full URL or base64
+  imageUrl: string | null;
   createdAt: string;
 }
 
@@ -19,45 +22,35 @@ interface DataCtx {
   items: GalleryItem[];
   loading: boolean;
   refresh: () => void;
-  saveCategories: (cats: Category[]) => void;
-  saveItems: (its: GalleryItem[]) => void;
-}
-
-const CAT_KEY  = 'noor_categories';
-const ITEM_KEY = 'noor_items';
-
-function load<T>(key: string, def: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : def;
-  } catch {
-    return def;
-  }
+  apiBase: string;
 }
 
 const Ctx = createContext<DataCtx>({} as DataCtx);
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [categories, setCats]   = useState<Category[]>(() => load<Category[]>(CAT_KEY, []));
-  const [items,      setItemsSt] = useState<GalleryItem[]>(() => load<GalleryItem[]>(ITEM_KEY, []));
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [items, setItems]           = useState<GalleryItem[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [tick, setTick]             = useState(0);
 
-  const saveCategories = (cats: Category[]) => {
-    localStorage.setItem(CAT_KEY, JSON.stringify(cats));
-    setCats(cats);
-  };
+  const refresh = () => setTick(t => t + 1);
 
-  const saveItems = (its: GalleryItem[]) => {
-    localStorage.setItem(ITEM_KEY, JSON.stringify(its));
-    setItemsSt(its);
-  };
-
-  const refresh = () => {
-    setCats(load<Category[]>(CAT_KEY, []));
-    setItemsSt(load<GalleryItem[]>(ITEM_KEY, []));
-  };
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      fetch(`${API}/api/categories`).then(r => r.json()),
+      fetch(`${API}/api/items`).then(r => r.json()),
+    ])
+      .then(([cats, its]) => {
+        setCategories(Array.isArray(cats) ? cats : []);
+        setItems(Array.isArray(its) ? its : []);
+      })
+      .catch(() => { setCategories([]); setItems([]); })
+      .finally(() => setLoading(false));
+  }, [tick]);
 
   return (
-    <Ctx.Provider value={{ categories, items, loading: false, refresh, saveCategories, saveItems }}>
+    <Ctx.Provider value={{ categories, items, loading, refresh, apiBase: API }}>
       {children}
     </Ctx.Provider>
   );
