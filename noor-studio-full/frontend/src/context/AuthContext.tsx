@@ -15,6 +15,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token,    setToken]    = useState<string | null>(localStorage.getItem('noor_token'));
   const [username, setUsername] = useState<string | null>(localStorage.getItem('noor_user'));
 
+  // Auto-logout if stored token is a legacy fake token (not a real JWT)
+  useState(() => {
+    const t = localStorage.getItem('noor_token');
+    if (t && t.split('.').length !== 3) {
+      localStorage.removeItem('noor_token');
+      localStorage.removeItem('noor_user');
+    }
+  });
+
   const login = async (u: string, p: string): Promise<string | null> => {
     try {
       const res  = await fetch(`${API}/api/admin/login`, {
