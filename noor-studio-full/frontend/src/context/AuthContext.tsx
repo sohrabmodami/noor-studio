@@ -1,14 +1,7 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 
-// Local admin credentials (SHA-256 hash — no backend required)
-const LOCAL_USER = 'noor';
-const LOCAL_HASH = 'a47da6795d43eaa1c634b8af55a226b249a96ba1128e0c0b06fbef9fdcdcdc05';
-const SALT = 'noor_salt_x9k';
-
-async function sha256(str: string): Promise<string> {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
+// Local credentials — works on HTTP (no crypto.subtle needed)
+const VALID = btoa('noor\x00Studio@1404');
 
 interface AuthCtx {
   token: string | null;
@@ -24,12 +17,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [username, setUsername] = useState<string | null>(localStorage.getItem('noor_user'));
 
   const login = async (u: string, p: string): Promise<string | null> => {
-    const hash = await sha256(p + SALT);
-    if (u !== LOCAL_USER || hash !== LOCAL_HASH) return 'نام کاربری یا رمز اشتباه است';
-    const fakeToken = btoa(`${u}:${Date.now()}`);
-    localStorage.setItem('noor_token', fakeToken);
+    if (btoa(`${u}\x00${p}`) !== VALID) return 'نام کاربری یا رمز اشتباه است';
+    const tok = btoa(`${u}:${Date.now()}`);
+    localStorage.setItem('noor_token', tok);
     localStorage.setItem('noor_user', u);
-    setToken(fakeToken);
+    setToken(tok);
     setUsername(u);
     return null;
   };
