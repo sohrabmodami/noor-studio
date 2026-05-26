@@ -2,11 +2,12 @@ import { useState, useRef, FormEvent } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData, Category, GalleryItem } from '../context/DataContext';
 import ContentEditor from './ContentEditor';
+import SliderEditor from './SliderEditor';
 import './Admin.css';
 
 const API = import.meta.env.VITE_API_URL || '';
 
-type Tab = 'items' | 'categories' | 'content';
+type Tab = 'items' | 'categories' | 'slider' | 'content';
 
 export default function AdminPanel() {
   const { token, username, logout } = useAuth();
@@ -118,6 +119,9 @@ export default function AdminPanel() {
           <button className={tab === 'categories' ? 'active' : ''} onClick={() => setTab('categories')}>
             <span>🏷</span> دسته‌بندی‌ها
           </button>
+          <button className={tab === 'slider'     ? 'active' : ''} onClick={() => setTab('slider')}>
+            <span>🖼</span> اسلایدر
+          </button>
           <button className={tab === 'content'    ? 'active' : ''} onClick={() => setTab('content')}>
             <span>✏️</span> محتوای سایت
           </button>
@@ -130,6 +134,9 @@ export default function AdminPanel() {
 
       {/* ── Main ── */}
       <main className="admin-main">
+
+        {/* ════ SLIDER TAB ════ */}
+        {tab === 'slider' && <SliderEditor />}
 
         {/* ════ CONTENT TAB ════ */}
         {tab === 'content' && <ContentEditor />}

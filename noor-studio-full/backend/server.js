@@ -28,18 +28,33 @@ function readDB() {
   if (!fs.existsSync(dataFile)) {
     const initial = {
       categories: [
-        { id: 'wedding',  label: 'عروسی' },
-        { id: 'portrait', label: 'پرتره' },
-        { id: 'family',   label: 'خانوادگی' },
+        { id: 'wedding',    label: 'عروسی' },
+        { id: 'portrait',   label: 'پرتره' },
+        { id: 'family',     label: 'خانوادگی' },
         { id: 'commercial', label: 'تجاری' },
-        { id: 'nature',   label: 'طبیعت' }
+        { id: 'nature',     label: 'طبیعت' }
       ],
-      items: []
+      items: [],
+      slides: [
+        { id: uuidv4(), tag: 'عکاسی عروسی',    imageUrl: null, order: 0 },
+        { id: uuidv4(), tag: 'پرتره حرفه‌ای',  imageUrl: null, order: 1 },
+        { id: uuidv4(), tag: 'عکاسی خانوادگی', imageUrl: null, order: 2 }
+      ]
     };
     fs.writeFileSync(dataFile, JSON.stringify(initial, null, 2));
     return initial;
   }
-  return JSON.parse(fs.readFileSync(dataFile, 'utf-8'));
+  const db = JSON.parse(fs.readFileSync(dataFile, 'utf-8'));
+  // migrate: add slides if missing
+  if (!db.slides) {
+    db.slides = [
+      { id: uuidv4(), tag: 'عکاسی عروسی',    imageUrl: null, order: 0 },
+      { id: uuidv4(), tag: 'پرتره حرفه‌ای',  imageUrl: null, order: 1 },
+      { id: uuidv4(), tag: 'عکاسی خانوادگی', imageUrl: null, order: 2 }
+    ];
+    writeDB(db);
+  }
+  return db;
 }
 
 function writeDB(data) {
@@ -90,6 +105,55 @@ app.get('/api/items', (req, res) => {
 app.get('/api/categories', (req, res) => {
   const db = readDB();
   res.json(db.categories);
+});
+
+// GET slides (public)
+app.get('/api/slides', (req, res) => {
+  const db = readDB();
+  res.json([...db.slides].sort((a, b) => a.order - b.order));
+});
+
+// ══════════════════════════════════════
+//  ADMIN — SLIDES
+// ══════════════════════════════════════
+
+// PUT update slide (tag + optional image)
+app.put('/api/admin/slides/:id', authMiddleware, upload.single('image'), (req, res) => {
+  const db  = readDB();
+  const idx = db.slides.findIndex(s => s.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'اسلاید یافت نشد' });
+
+  const { tag } = req.body;
+  const slide   = db.slides[idx];
+
+  if (req.file && slide.imageUrl) {
+    const oldPath = path.join(__dirname, slide.imageUrl);
+    if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+  }
+
+  db.slides[idx] = {
+    ...slide,
+    tag:      tag !== undefined ? tag : slide.tag,
+    imageUrl: req.file ? `/uploads/${req.file.filename}` : slide.imageUrl,
+  };
+  writeDB(db);
+  res.json(db.slides[idx]);
+});
+
+// DELETE slide image (keep slide, just remove image)
+app.delete('/api/admin/slides/:id/image', authMiddleware, (req, res) => {
+  const db  = readDB();
+  const idx = db.slides.findIndex(s => s.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'اسلاید یافت نشد' });
+
+  const slide = db.slides[idx];
+  if (slide.imageUrl) {
+    const filePath = path.join(__dirname, slide.imageUrl);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    db.slides[idx].imageUrl = null;
+    writeDB(db);
+  }
+  res.json(db.slides[idx]);
 });
 
 // ══════════════════════════════════════
