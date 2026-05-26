@@ -1,14 +1,16 @@
 import './CTA.css';
+import { useSiteContent } from '../context/SiteContentContext';
 
 export default function CTA() {
+  const { content: { cta } } = useSiteContent();
   return (
     <section id="cta" className="cta-section">
       <div className="cta-box">
-        <h2>آماده‌اید لحظاتتان را<br /><strong>جاودان کنید؟</strong></h2>
-        <p>همین الان رزرو کنید — اولین مشاوره کاملاً رایگان است.</p>
+        <h2>{cta.heading}<br /><strong>{cta.headingBold}</strong></h2>
+        <p>{cta.desc}</p>
         <div className="cta-btns">
-          <a href="mailto:info@noorstudio.ir" className="btn-white">ارسال ایمیل</a>
-          <a href="https://instagram.com" target="_blank" rel="noreferrer" className="btn-white-out">اینستاگرام ما</a>
+          <a href={cta.emailHref} className="btn-white">{cta.emailLabel}</a>
+          <a href={cta.instagramHref} target="_blank" rel="noreferrer" className="btn-white-out">{cta.instagramLabel}</a>
         </div>
       </div>
     </section>

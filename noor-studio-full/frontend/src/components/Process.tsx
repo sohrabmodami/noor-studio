@@ -1,22 +1,17 @@
 import './Process.css';
-
-const steps = [
-  { n: '۰۱', title: 'مشاوره رایگان', desc: 'یک جلسه آنلاین یا حضوری برای آشنایی با سلیقه و نیاز شما.' },
-  { n: '۰۲', title: 'برنامه‌ریزی', desc: 'انتخاب لوکیشن، تاریخ و تنظیم جزئیات پروژه با هم.' },
-  { n: '۰۳', title: 'روز عکاسی', desc: 'یک تجربه راحت و صمیمی — فقط خودتان باشید!' },
-  { n: '۰۴', title: 'تحویل آثار', desc: 'ویرایش حرفه‌ای و تحویل فایل‌ها در ۳ تا ۴ هفته.' },
-];
+import { useSiteContent } from '../context/SiteContentContext';
 
 export default function Process() {
+  const { content: { process: p } } = useSiteContent();
   return (
     <section id="process" className="process-section">
       <div className="process-inner">
         <div className="section-head">
-          <span className="section-eyebrow">فرآیند کار</span>
-          <h2 className="section-title">چطور <strong>باهم کار می‌کنیم؟</strong></h2>
+          <span className="section-eyebrow">{p.eyebrow}</span>
+          <h2 className="section-title">{p.title}<strong>{p.titleBold}</strong></h2>
         </div>
         <div className="process-cards">
-          {steps.map(s => (
+          {p.steps.map(s => (
             <div key={s.n} className="process-card">
               <div className="p-num">{s.n}</div>
               <div className="p-title">{s.title}</div>

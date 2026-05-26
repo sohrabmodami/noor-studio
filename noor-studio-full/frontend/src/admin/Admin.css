@@ -221,3 +221,47 @@
 .admin-empty { text-align: center; padding: 4rem 2rem; color: #9e7e76; }
 .admin-empty span { font-size: 3rem; display: block; margin-bottom: .8rem; }
 .admin-empty p { margin-bottom: 1rem; }
+
+/* ══ CONTENT EDITOR ══ */
+.content-section-tabs {
+  display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: 1.5rem;
+}
+.csec-tab {
+  padding: .4rem 1.1rem; border: 1.5px solid #f0e0d8; border-radius: 50px;
+  background: transparent; color: #9e7e76; font-size: .82rem; font-family: inherit;
+  cursor: pointer; transition: all .2s;
+}
+.csec-tab:hover { border-color: #e8a598; color: #c97b6b; }
+.csec-tab.active { background: #c97b6b; border-color: #c97b6b; color: #fff; font-weight: 700; }
+
+.content-editor-body {
+  max-width: 640px;
+}
+.ce-section { display: flex; flex-direction: column; gap: .9rem; }
+
+.ce-field { display: flex; flex-direction: column; gap: .3rem; }
+.ce-field label {
+  font-size: .8rem; font-weight: 600; color: #2c1f1a;
+}
+.ce-field input, .ce-field textarea {
+  padding: .6rem .9rem; border: 1.5px solid #f0e0d8; border-radius: 12px;
+  font-size: .9rem; font-family: inherit; outline: none;
+  background: #fdf8f5; color: #2c1f1a; transition: border-color .2s;
+  width: 100%;
+}
+.ce-field input:focus, .ce-field textarea:focus { border-color: #e8a598; }
+.ce-field textarea { resize: vertical; min-height: 60px; }
+
+.ce-group-title {
+  font-size: .75rem; font-weight: 700; color: #c97b6b; text-transform: uppercase;
+  letter-spacing: .06em; margin-top: .4rem; padding-bottom: .3rem;
+  border-bottom: 1px solid #f0e0d8;
+}
+
+.ce-step-group {
+  background: #fff; border: 1.5px solid #f0e0d8; border-radius: 14px;
+  padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: .7rem;
+}
+.ce-step-head {
+  font-size: .78rem; font-weight: 700; color: #c97b6b;
+}

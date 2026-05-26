@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData, Category, GalleryItem } from '../context/DataContext';
+import ContentEditor from './ContentEditor';
 import './Admin.css';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
-type Tab = 'items' | 'categories';
+type Tab = 'items' | 'categories' | 'content';
 
 export default function AdminPanel() {
   const { token, username, logout } = useAuth();
@@ -119,6 +120,9 @@ export default function AdminPanel() {
           <button className={tab === 'categories' ? 'active' : ''} onClick={() => setTab('categories')}>
             <span>🏷</span> دسته‌بندی‌ها
           </button>
+          <button className={tab === 'content' ? 'active' : ''} onClick={() => setTab('content')}>
+            <span>✏️</span> محتوای سایت
+          </button>
         </nav>
         <div className="sidebar-footer">
           <div className="sidebar-user">👤 {username}</div>
@@ -190,6 +194,9 @@ export default function AdminPanel() {
             )}
           </div>
         )}
+
+        {/* ════ CONTENT TAB ════ */}
+        {tab === 'content' && <ContentEditor />}
 
         {/* ════ CATEGORIES TAB ════ */}
         {tab === 'categories' && (

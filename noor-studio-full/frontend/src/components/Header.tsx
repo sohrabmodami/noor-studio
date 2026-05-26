@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import './Header.css';
+import { useSiteContent } from '../context/SiteContentContext';
 
-const SECTIONS = [
-  { id: 'hero',    label: 'خانه',   icon: 'home'    },
-  { id: 'gallery', label: 'گالری',  icon: 'gallery' },
-  { id: 'process', label: 'فرآیند', icon: 'process' },
-  { id: 'cta',     label: 'تماس',   icon: 'contact' },
-];
+const SECTION_IDS = ['hero', 'gallery', 'process', 'cta'] as const;
+const SECTION_ICONS: Record<string, string> = {
+  hero: 'home', gallery: 'gallery', process: 'process', cta: 'contact',
+};
 
 // SVG paths for each icon
 const ICONS: Record<string, JSX.Element> = {
@@ -44,6 +43,13 @@ function scrollToSection(id: string) {
 }
 
 export default function Header() {
+  const { content: { header } } = useSiteContent();
+  const SECTIONS = SECTION_IDS.map(id => ({
+    id,
+    label: header.navLabels[id],
+    icon: SECTION_ICONS[id],
+  }));
+
   const [active, setActive]     = useState('hero');
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -63,7 +69,7 @@ export default function Header() {
       if (el && scrollY >= el.offsetTop - winH * 0.4) current = sec.id;
     }
     setActive(current);
-  }, []);
+  }, [SECTIONS]);
 
   useEffect(() => {
     window.addEventListener('scroll', detectActive, { passive: true });
@@ -84,7 +90,7 @@ export default function Header() {
       <nav className={`navbar${scrolled ? ' scrolled' : ''}`}>
 
         <button className="logo" onClick={() => handleNav('hero')}>
-          نور<span> استودیو</span>
+          {header.logo.split(' ')[0]}<span> {header.logo.split(' ').slice(1).join(' ')}</span>
         </button>
 
         {/* Desktop links */}
@@ -103,7 +109,7 @@ export default function Header() {
         </ul>
 
         <div className="nav-right">
-          <button className="nav-cta" onClick={() => handleNav('cta')}>رزرو رایگان</button>
+          <button className="nav-cta" onClick={() => handleNav('cta')}>{header.ctaBtn}</button>
           <button
             className={`hamburger${menuOpen ? ' open' : ''}`}
             onClick={() => setMenuOpen(o => !o)}
@@ -129,7 +135,7 @@ export default function Header() {
               <span className="drawer-label">{sec.label}</span>
             </button>
           ))}
-          <button className="drawer-cta" onClick={() => handleNav('cta')}>رزرو رایگان</button>
+          <button className="drawer-cta" onClick={() => handleNav('cta')}>{header.ctaBtn}</button>
         </div>
       </div>
 

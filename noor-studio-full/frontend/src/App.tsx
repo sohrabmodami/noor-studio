@@ -1,5 +1,6 @@
 import { DataProvider } from './context/DataContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { SiteContentProvider } from './context/SiteContentContext';
 import AdminLogin from './admin/AdminLogin';
 import AdminPanel from './admin/AdminPanel';
 import Header from './components/Header';
@@ -32,10 +33,12 @@ function PublicSite() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <DataProvider>
-        {isAdmin ? <AdminRoute /> : <PublicSite />}
-      </DataProvider>
-    </AuthProvider>
+    <SiteContentProvider>
+      <AuthProvider>
+        <DataProvider>
+          {isAdmin ? <AdminRoute /> : <PublicSite />}
+        </DataProvider>
+      </AuthProvider>
+    </SiteContentProvider>
   );
 }

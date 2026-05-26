@@ -1,22 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import './Hero.css';
+import { useSiteContent } from '../context/SiteContentContext';
 
-const slides = [
-  {
-    tag: 'عکاسی عروسی',
-    bg: 'linear-gradient(145deg,#e8c5bc 0%,#d4a090 50%,#c9907e 100%)',
-  },
-  {
-    tag: 'پرتره حرفه‌ای',
-    bg: 'linear-gradient(145deg,#dcc4bb 0%,#c9a898 50%,#b89080 100%)',
-  },
-  {
-    tag: 'عکاسی خانوادگی',
-    bg: 'linear-gradient(145deg,#f0d5cc 0%,#e0b8ac 50%,#d4a090 100%)',
-  },
+const SLIDE_BGS = [
+  'linear-gradient(145deg,#e8c5bc 0%,#d4a090 50%,#c9907e 100%)',
+  'linear-gradient(145deg,#dcc4bb 0%,#c9a898 50%,#b89080 100%)',
+  'linear-gradient(145deg,#f0d5cc 0%,#e0b8ac 50%,#d4a090 100%)',
 ];
 
 export default function Hero() {
+  const { content: { hero, header } } = useSiteContent();
+  const slides = hero.slides.map((s, i) => ({ tag: s.tag, bg: SLIDE_BGS[i % SLIDE_BGS.length] }));
+
   const [idx, setIdx] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const touchStart = useRef(0);
@@ -54,7 +49,7 @@ export default function Hero() {
         <div className="hero-glass">
           <span className="hero-glass-dot" />
           <div className="hero-glass-text">
-            <span className="hero-glass-label">استودیو نور</span>
+            <span className="hero-glass-label">{header.logo}</span>
             <span className="hero-glass-tag">{slides[idx].tag}</span>
           </div>
         </div>
