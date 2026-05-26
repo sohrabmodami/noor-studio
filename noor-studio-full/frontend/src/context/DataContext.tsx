@@ -1,6 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+import { createContext, useContext, useState, ReactNode } from 'react';
 
 export interface Category {
   id: string;
@@ -12,7 +10,7 @@ export interface GalleryItem {
   title: string;
   categoryId: string;
   description: string;
-  imageUrl: string | null;
+  imageUrl: string | null; // full URL or base64
   createdAt: string;
 }
 
@@ -21,32 +19,45 @@ interface DataCtx {
   items: GalleryItem[];
   loading: boolean;
   refresh: () => void;
-  apiBase: string;
+  saveCategories: (cats: Category[]) => void;
+  saveItems: (its: GalleryItem[]) => void;
+}
+
+const CAT_KEY  = 'noor_categories';
+const ITEM_KEY = 'noor_items';
+
+function load<T>(key: string, def: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : def;
+  } catch {
+    return def;
+  }
 }
 
 const Ctx = createContext<DataCtx>({} as DataCtx);
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [items, setItems] = useState<GalleryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [tick, setTick] = useState(0);
+  const [categories, setCats]   = useState<Category[]>(() => load<Category[]>(CAT_KEY, []));
+  const [items,      setItemsSt] = useState<GalleryItem[]>(() => load<GalleryItem[]>(ITEM_KEY, []));
 
-  const refresh = () => setTick(t => t + 1);
+  const saveCategories = (cats: Category[]) => {
+    localStorage.setItem(CAT_KEY, JSON.stringify(cats));
+    setCats(cats);
+  };
 
-  useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      fetch(`${API}/api/categories`).then(r => r.json()),
-      fetch(`${API}/api/items`).then(r => r.json())
-    ]).then(([cats, its]) => {
-      setCategories(cats);
-      setItems(its);
-    }).finally(() => setLoading(false));
-  }, [tick]);
+  const saveItems = (its: GalleryItem[]) => {
+    localStorage.setItem(ITEM_KEY, JSON.stringify(its));
+    setItemsSt(its);
+  };
+
+  const refresh = () => {
+    setCats(load<Category[]>(CAT_KEY, []));
+    setItemsSt(load<GalleryItem[]>(ITEM_KEY, []));
+  };
 
   return (
-    <Ctx.Provider value={{ categories, items, loading, refresh, apiBase: API }}>
+    <Ctx.Provider value={{ categories, items, loading: false, refresh, saveCategories, saveItems }}>
       {children}
     </Ctx.Provider>
   );

@@ -1,111 +1,94 @@
-import { useState, useEffect, useRef, FormEvent } from 'react';
+import { useState, FormEvent } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData, Category, GalleryItem } from '../context/DataContext';
 import ContentEditor from './ContentEditor';
 import './Admin.css';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-
 type Tab = 'items' | 'categories' | 'content';
 
+function uid() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
 export default function AdminPanel() {
-  const { token, username, logout } = useAuth();
-  const { categories, items, loading, refresh, apiBase } = useData();
+  const { username, logout } = useAuth();
+  const { categories, items, saveCategories, saveItems } = useData();
   const [tab, setTab] = useState<Tab>('items');
   const [filterCat, setFilterCat] = useState('all');
 
   // ── Item Form ──
-  const [showItemForm, setShowItemForm] = useState(false);
-  const [editItem, setEditItem] = useState<GalleryItem | null>(null);
-  const [itemTitle, setItemTitle] = useState('');
-  const [itemCat, setItemCat] = useState('');
-  const [itemDesc, setItemDesc] = useState('');
-  const [itemFile, setItemFile] = useState<File | null>(null);
-  const [itemPreview, setItemPreview] = useState<string | null>(null);
-  const [itemLoading, setItemLoading] = useState(false);
-  const [itemErr, setItemErr] = useState('');
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [showItemForm, setShowItemForm]   = useState(false);
+  const [editItem,     setEditItem]       = useState<GalleryItem | null>(null);
+  const [itemTitle,    setItemTitle]      = useState('');
+  const [itemCat,      setItemCat]        = useState('');
+  const [itemDesc,     setItemDesc]       = useState('');
+  const [itemUrl,      setItemUrl]        = useState('');
+  const [itemErr,      setItemErr]        = useState('');
 
   // ── Category Form ──
   const [showCatForm, setShowCatForm] = useState(false);
-  const [catId, setCatId] = useState('');
-  const [catLabel, setCatLabel] = useState('');
-  const [catErr, setCatErr] = useState('');
-  const [catLoading, setCatLoading] = useState(false);
+  const [catId,       setCatId]       = useState('');
+  const [catLabel,    setCatLabel]    = useState('');
+  const [catErr,      setCatErr]      = useState('');
 
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-
-  const authHeaders = { Authorization: `Bearer ${token}` };
 
   const filteredItems = filterCat === 'all' ? items : items.filter(i => i.categoryId === filterCat);
 
   // ── Reset item form ──
   const resetItemForm = () => {
-    setEditItem(null); setItemTitle(''); setItemCat(''); setItemDesc('');
-    setItemFile(null); setItemPreview(null); setItemErr('');
-    if (fileRef.current) fileRef.current.value = '';
+    setEditItem(null); setItemTitle(''); setItemCat('');
+    setItemDesc(''); setItemUrl(''); setItemErr('');
   };
   const openNewItem = () => { resetItemForm(); setShowItemForm(true); };
   const openEditItem = (item: GalleryItem) => {
     setEditItem(item); setItemTitle(item.title); setItemCat(item.categoryId);
-    setItemDesc(item.description); setItemFile(null);
-    setItemPreview(item.imageUrl ? `${apiBase}${item.imageUrl}` : null);
-    setItemErr(''); setShowItemForm(true);
+    setItemDesc(item.description); setItemUrl(item.imageUrl || ''); setItemErr('');
+    setShowItemForm(true);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    setItemFile(file);
-    if (file) setItemPreview(URL.createObjectURL(file));
-  };
-
-  const handleItemSubmit = async (e: FormEvent) => {
+  const handleItemSubmit = (e: FormEvent) => {
     e.preventDefault();
-    setItemErr(''); setItemLoading(true);
-    const fd = new FormData();
-    fd.append('title', itemTitle);
-    fd.append('categoryId', itemCat);
-    fd.append('description', itemDesc);
-    if (itemFile) fd.append('image', itemFile);
+    if (!itemTitle.trim()) { setItemErr('عنوان الزامی است'); return; }
+    if (!itemCat)          { setItemErr('دسته‌بندی را انتخاب کنید'); return; }
 
-    const url = editItem ? `${API}/api/admin/items/${editItem.id}` : `${API}/api/admin/items`;
-    const method = editItem ? 'PUT' : 'POST';
-
-    try {
-      const res = await fetch(url, { method, headers: authHeaders, body: fd });
-      const data = await res.json();
-      if (!res.ok) { setItemErr(data.error || 'خطا'); setItemLoading(false); return; }
-      refresh(); setShowItemForm(false); resetItemForm();
-    } catch { setItemErr('خطای شبکه'); }
-    setItemLoading(false);
+    if (editItem) {
+      saveItems(items.map(i => i.id === editItem.id
+        ? { ...i, title: itemTitle, categoryId: itemCat, description: itemDesc, imageUrl: itemUrl || null }
+        : i
+      ));
+    } else {
+      const newItem: GalleryItem = {
+        id: uid(), title: itemTitle, categoryId: itemCat,
+        description: itemDesc, imageUrl: itemUrl || null, createdAt: new Date().toISOString(),
+      };
+      saveItems([...items, newItem]);
+    }
+    setShowItemForm(false); resetItemForm();
   };
 
-  const handleDeleteItem = async (id: string) => {
-    const res = await fetch(`${API}/api/admin/items/${id}`, { method: 'DELETE', headers: authHeaders });
-    if (res.ok) { refresh(); setDeleteConfirm(null); }
+  const handleDeleteItem = (id: string) => {
+    saveItems(items.filter(i => i.id !== id));
+    setDeleteConfirm(null);
   };
 
-  const handleCatSubmit = async (e: FormEvent) => {
+  const handleCatSubmit = (e: FormEvent) => {
     e.preventDefault();
-    setCatErr(''); setCatLoading(true);
-    try {
-      const res = await fetch(`${API}/api/admin/categories`, {
-        method: 'POST',
-        headers: { ...authHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: catId.trim().toLowerCase().replace(/\s+/g, '_'), label: catLabel })
-      });
-      const data = await res.json();
-      if (!res.ok) { setCatErr(data.error || 'خطا'); setCatLoading(false); return; }
-      refresh(); setShowCatForm(false); setCatId(''); setCatLabel('');
-    } catch { setCatErr('خطای شبکه'); }
-    setCatLoading(false);
+    const id = catId.trim().toLowerCase().replace(/\s+/g, '_');
+    if (!catLabel.trim()) { setCatErr('نام الزامی است'); return; }
+    if (!id)              { setCatErr('شناسه الزامی است'); return; }
+    if (categories.find(c => c.id === id)) { setCatErr('این شناسه قبلاً وجود دارد'); return; }
+    saveCategories([...categories, { id, label: catLabel }]);
+    setShowCatForm(false); setCatId(''); setCatLabel(''); setCatErr('');
   };
 
-  const handleDeleteCat = async (id: string) => {
-    const res = await fetch(`${API}/api/admin/categories/${id}`, { method: 'DELETE', headers: authHeaders });
-    const data = await res.json();
-    if (!res.ok) { alert(data.error); return; }
-    refresh(); setDeleteConfirm(null);
+  const handleDeleteCat = (id: string) => {
+    if (items.some(i => i.categoryId === id)) {
+      alert('ابتدا آیتم‌های این دسته را حذف کنید');
+      setDeleteConfirm(null); return;
+    }
+    saveCategories(categories.filter(c => c.id !== id));
+    setDeleteConfirm(null);
   };
 
   return (
@@ -133,6 +116,9 @@ export default function AdminPanel() {
       {/* ── Main ── */}
       <main className="admin-main">
 
+        {/* ════ CONTENT TAB ════ */}
+        {tab === 'content' && <ContentEditor />}
+
         {/* ════ ITEMS TAB ════ */}
         {tab === 'items' && (
           <div>
@@ -141,26 +127,18 @@ export default function AdminPanel() {
               <button className="btn-add" onClick={openNewItem}>+ افزودن آیتم</button>
             </div>
 
-            {/* Filter */}
             <div className="admin-filter-bar">
               <button className={`acat-btn${filterCat === 'all' ? ' on' : ''}`} onClick={() => setFilterCat('all')}>
                 همه ({items.length})
               </button>
               {categories.map(c => (
-                <button
-                  key={c.id}
-                  className={`acat-btn${filterCat === c.id ? ' on' : ''}`}
-                  onClick={() => setFilterCat(c.id)}
-                >
+                <button key={c.id} className={`acat-btn${filterCat === c.id ? ' on' : ''}`} onClick={() => setFilterCat(c.id)}>
                   {c.label} ({items.filter(i => i.categoryId === c.id).length})
                 </button>
               ))}
             </div>
 
-            {/* Items Table */}
-            {loading ? (
-              <div className="admin-loading">در حال بارگذاری...</div>
-            ) : filteredItems.length === 0 ? (
+            {filteredItems.length === 0 ? (
               <div className="admin-empty">
                 <span>📭</span><p>هیچ آیتمی یافت نشد</p>
                 <button className="btn-add" onClick={openNewItem}>+ افزودن اولین آیتم</button>
@@ -172,7 +150,7 @@ export default function AdminPanel() {
                     <div
                       className="item-thumb"
                       style={item.imageUrl
-                        ? { backgroundImage: `url(${apiBase}${item.imageUrl})` }
+                        ? { backgroundImage: `url(${item.imageUrl})` }
                         : { background: 'linear-gradient(135deg,#f5ddd6,#e8c5bc)' }}
                     >
                       {!item.imageUrl && <span>📷</span>}
@@ -195,9 +173,6 @@ export default function AdminPanel() {
           </div>
         )}
 
-        {/* ════ CONTENT TAB ════ */}
-        {tab === 'content' && <ContentEditor />}
-
         {/* ════ CATEGORIES TAB ════ */}
         {tab === 'categories' && (
           <div>
@@ -206,6 +181,9 @@ export default function AdminPanel() {
               <button className="btn-add" onClick={() => setShowCatForm(true)}>+ افزودن دسته‌بندی</button>
             </div>
             <div className="cat-list">
+              {categories.length === 0 && (
+                <div className="admin-empty"><span>🏷</span><p>هنوز دسته‌بندی‌ای ندارید</p></div>
+              )}
               {categories.map(c => {
                 const count = items.filter(i => i.categoryId === c.id).length;
                 return (
@@ -239,23 +217,6 @@ export default function AdminPanel() {
             </div>
             <form onSubmit={handleItemSubmit} className="modal-form">
 
-              {/* Image Upload */}
-              <div
-                className="upload-zone"
-                onClick={() => fileRef.current?.click()}
-                style={itemPreview ? { backgroundImage: `url(${itemPreview})` } : {}}
-              >
-                {!itemPreview && (
-                  <>
-                    <span className="upload-icon">📸</span>
-                    <p>کلیک کنید یا تصویر را اینجا بکشید</p>
-                    <small>JPG، PNG، WEBP — حداکثر ۱۰MB</small>
-                  </>
-                )}
-                {itemPreview && <div className="upload-overlay">تغییر تصویر</div>}
-                <input ref={fileRef} type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
-              </div>
-
               <label>عنوان <span className="req">*</span></label>
               <input value={itemTitle} onChange={e => setItemTitle(e.target.value)} placeholder="عنوان آیتم" required />
 
@@ -265,15 +226,25 @@ export default function AdminPanel() {
                 {categories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
               </select>
 
+              <label>لینک تصویر</label>
+              <input
+                value={itemUrl} onChange={e => setItemUrl(e.target.value)}
+                placeholder="https://... (اختیاری)" dir="ltr"
+              />
+              {itemUrl && (
+                <div className="img-preview-wrap">
+                  <img src={itemUrl} alt="preview" className="img-preview"
+                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                </div>
+              )}
+
               <label>توضیحات</label>
               <textarea value={itemDesc} onChange={e => setItemDesc(e.target.value)} placeholder="توضیح کوتاه (اختیاری)" rows={3} />
 
               {itemErr && <div className="err-msg">{itemErr}</div>}
               <div className="modal-actions">
                 <button type="button" className="btn-cancel" onClick={() => { setShowItemForm(false); resetItemForm(); }}>انصراف</button>
-                <button type="submit" className="btn-save" disabled={itemLoading}>
-                  {itemLoading ? 'در حال ذخیره...' : editItem ? 'ذخیره تغییرات' : 'افزودن آیتم'}
-                </button>
+                <button type="submit" className="btn-save">{editItem ? 'ذخیره تغییرات' : 'افزودن آیتم'}</button>
               </div>
             </form>
           </div>
@@ -293,13 +264,11 @@ export default function AdminPanel() {
               <input value={catLabel} onChange={e => setCatLabel(e.target.value)} placeholder="مثلاً: عروسی" required />
               <label>شناسه (ID) <span className="req">*</span></label>
               <input value={catId} onChange={e => setCatId(e.target.value)} placeholder="مثلاً: wedding" required dir="ltr" />
-              <small style={{ color: '#9e7e76', fontSize: '.78rem' }}>فقط حروف انگلیسی و خط تیره — مثلاً: family_event</small>
+              <small style={{ color: '#9e7e76', fontSize: '.78rem' }}>فقط حروف انگلیسی — مثلاً: family_event</small>
               {catErr && <div className="err-msg">{catErr}</div>}
               <div className="modal-actions">
                 <button type="button" className="btn-cancel" onClick={() => setShowCatForm(false)}>انصراف</button>
-                <button type="submit" className="btn-save" disabled={catLoading}>
-                  {catLoading ? 'در حال ذخیره...' : 'افزودن'}
-                </button>
+                <button type="submit" className="btn-save">افزودن</button>
               </div>
             </form>
           </div>

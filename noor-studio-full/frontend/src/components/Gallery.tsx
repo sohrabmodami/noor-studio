@@ -12,7 +12,7 @@ const BG_COLORS = [
 ];
 
 export default function Gallery() {
-  const { categories, items, loading, apiBase } = useData();
+  const { categories, items, loading } = useData();
   const [active, setActive] = useState('all');
 
   const filtered = useMemo(() =>
@@ -59,7 +59,7 @@ export default function Gallery() {
                 className="card-bg"
                 style={
                   item.imageUrl
-                    ? { backgroundImage: `url(${apiBase}${item.imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                    ? { backgroundImage: `url(${item.imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
                     : { background: BG_COLORS[i % BG_COLORS.length] }
                 }
               />
