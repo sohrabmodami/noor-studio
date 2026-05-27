@@ -70,7 +70,7 @@ const storage = multer.diskStorage({
   }
 });
 const fileFilter = (req, file, cb) => {
-  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
   allowed.includes(file.mimetype) ? cb(null, true) : cb(new Error('فقط فایل تصویری مجاز است'), false);
 };
 const upload = multer({ storage, fileFilter, limits: { fileSize: 10 * 1024 * 1024 } });
@@ -105,6 +105,38 @@ app.get('/api/items', (req, res) => {
 app.get('/api/categories', (req, res) => {
   const db = readDB();
   res.json(db.categories);
+});
+
+// GET logo (public)
+app.get('/api/logo', (req, res) => {
+  const db = readDB();
+  res.json({ logoUrl: db.logoUrl || null });
+});
+
+// POST upload logo (admin)
+app.post('/api/admin/logo', authMiddleware, upload.single('logo'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'فایلی ارسال نشد' });
+  const db = readDB();
+  // delete old logo file
+  if (db.logoUrl) {
+    const old = path.join(__dirname, db.logoUrl);
+    if (fs.existsSync(old)) fs.unlinkSync(old);
+  }
+  db.logoUrl = `/uploads/${req.file.filename}`;
+  writeDB(db);
+  res.json({ logoUrl: db.logoUrl });
+});
+
+// DELETE logo (admin)
+app.delete('/api/admin/logo', authMiddleware, (req, res) => {
+  const db = readDB();
+  if (db.logoUrl) {
+    const old = path.join(__dirname, db.logoUrl);
+    if (fs.existsSync(old)) fs.unlinkSync(old);
+    db.logoUrl = null;
+    writeDB(db);
+  }
+  res.json({ logoUrl: null });
 });
 
 // GET slides (public)

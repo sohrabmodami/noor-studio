@@ -294,3 +294,13 @@
 .ce-step-head {
   font-size: .78rem; font-weight: 700; color: #c97b6b;
 }
+
+/* Logo upload */
+.logo-upload-area {
+  display: flex; flex-direction: column; gap: .7rem;
+  background: #fff; border: 1.5px solid #f0e0d8; border-radius: 14px; padding: 1rem 1.2rem;
+}
+.logo-preview { height: 52px; width: auto; object-fit: contain; }
+.logo-placeholder {
+  font-size: .82rem; color: #9e7e76; font-style: italic; padding: .4rem 0;
+}

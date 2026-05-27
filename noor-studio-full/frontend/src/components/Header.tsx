@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import './Header.css';
 import { useSiteContent } from '../context/SiteContentContext';
 
+const API = import.meta.env.VITE_API_URL || '';
+
 const SECTION_IDS = ['hero', 'gallery', 'process', 'cta'] as const;
 const SECTION_ICONS: Record<string, string> = {
   hero: 'home', gallery: 'gallery', process: 'process', cta: 'contact',
@@ -44,6 +46,15 @@ function scrollToSection(id: string) {
 
 export default function Header() {
   const { content: { header } } = useSiteContent();
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(`${API}/api/logo`)
+      .then(r => r.json())
+      .then(d => d.logoUrl && setLogoUrl(d.logoUrl))
+      .catch(() => {});
+  }, []);
+
   const SECTIONS = SECTION_IDS.map(id => ({
     id,
     label: header.navLabels[id],
@@ -90,7 +101,10 @@ export default function Header() {
       <nav className={`navbar${scrolled ? ' scrolled' : ''}`}>
 
         <button className="logo" onClick={() => handleNav('hero')}>
-          {header.logo.split(' ')[0]}<span> {header.logo.split(' ').slice(1).join(' ')}</span>
+          {logoUrl
+            ? <img src={`${API}${logoUrl}`} alt={header.logo} className="logo-img" />
+            : <>{header.logo.split(' ')[0]}<span> {header.logo.split(' ').slice(1).join(' ')}</span></>
+          }
         </button>
 
         {/* Desktop links */}

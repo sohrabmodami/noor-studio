@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSiteContent, SiteContent, DEFAULTS } from '../context/SiteContentContext';
+import { useAuth } from '../context/AuthContext';
+
+const API = import.meta.env.VITE_API_URL || '';
 
 type Section = 'header' | 'hero' | 'process' | 'cta' | 'footer';
 
@@ -13,9 +16,37 @@ const SECTION_LABELS: Record<Section, string> = {
 
 export default function ContentEditor() {
   const { content, update, reset } = useSiteContent();
+  const { token } = useAuth();
   const [local, setLocal] = useState<SiteContent>(content);
   const [section, setSection] = useState<Section>('header');
   const [saved, setSaved] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoSaving, setLogoSaving] = useState(false);
+  const logoRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetch(`${API}/api/logo`).then(r => r.json()).then(d => setLogoUrl(d.logoUrl || null)).catch(() => {});
+  }, []);
+
+  const uploadLogo = async (file: File) => {
+    setLogoSaving(true);
+    const fd = new FormData();
+    fd.append('logo', file);
+    const res = await fetch(`${API}/api/admin/logo`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd,
+    });
+    const data = await res.json();
+    if (data.logoUrl) setLogoUrl(data.logoUrl);
+    setLogoSaving(false);
+  };
+
+  const removeLogo = async () => {
+    if (!confirm('لوگو حذف شود؟')) return;
+    setLogoSaving(true);
+    await fetch(`${API}/api/admin/logo`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    setLogoUrl(null);
+    setLogoSaving(false);
+  };
 
   const save = () => {
     update(local);
@@ -55,8 +86,30 @@ export default function ContentEditor() {
 
         {section === 'header' && (
           <div className="ce-section">
+
+            {/* Logo upload */}
+            <div className="ce-group-title">لوگو سایت</div>
+            <div className="logo-upload-area">
+              {logoUrl
+                ? <img src={`${API}${logoUrl}`} alt="logo" className="logo-preview" />
+                : <div className="logo-placeholder">لوگو آپلود نشده — متن استفاده می‌شود</div>
+              }
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button className="btn-edit" style={{ flex: 'none', padding: '.5rem 1.2rem' }}
+                  onClick={() => logoRef.current?.click()} disabled={logoSaving}>
+                  {logoSaving ? 'در حال آپلود...' : logoUrl ? 'تغییر لوگو' : 'آپلود لوگو'}
+                </button>
+                {logoUrl && <button className="btn-del" style={{ flex: 'none', padding: '.5rem 1rem' }}
+                  onClick={removeLogo} disabled={logoSaving}>حذف</button>}
+              </div>
+              <small style={{ color: '#9e7e76', fontSize: '.75rem' }}>فرمت‌های مجاز: PNG، SVG — پیشنهاد: ارتفاع ۶۰px، پس‌زمینه شفاف</small>
+              <input ref={logoRef} type="file" accept="image/png,image/svg+xml,image/webp" style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) uploadLogo(f); e.target.value = ''; }} />
+            </div>
+
+            <div className="ce-group-title">متن جایگزین (اگر لوگو آپلود نشود)</div>
             <div className="ce-field">
-              <label>لوگو</label>
+              <label>متن لوگو</label>
               <input value={local.header.logo} onChange={e => set('header', { logo: e.target.value })} />
             </div>
             <div className="ce-field">
