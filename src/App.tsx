@@ -1,53 +1,41 @@
-import { useState } from 'react';
 import { DataProvider } from './context/DataContext';
-import AdminApp from './admin/AdminApp';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import AdminLogin from './admin/AdminLogin';
-import Loader from './components/Loader';
+import AdminPanel from './admin/AdminPanel';
 import Header from './components/Header';
-import HeroSlider from './components/HeroSlider';
-import CardGrid from './components/CardGrid';
-import Stats from './components/Stats';
+import Hero from './components/Hero';
+import Gallery from './components/Gallery';
 import Process from './components/Process';
 import CTA from './components/CTA';
 import Footer from './components/Footer';
+import './App.css';
 
-const isAdminRoute = new URLSearchParams(window.location.search).has('admin');
+const isAdmin = new URLSearchParams(window.location.search).has('admin');
+
+function AdminRoute() {
+  const { token } = useAuth();
+  return token ? <AdminPanel /> : <AdminLogin />;
+}
 
 function PublicSite() {
   return (
     <>
-      <Loader />
       <Header />
-      <HeroSlider />
-      <div className="page">
-        <CardGrid />
-        <Stats />
-        <Process />
-        <CTA />
-        <Footer />
-      </div>
+      <Hero />
+      <Gallery />
+      <Process />
+      <CTA />
+      <Footer />
     </>
   );
 }
 
-function AdminGate() {
-  const [authed, setAuthed] = useState(
-    () => sessionStorage.getItem('noor_admin_auth') === '1'
-  );
-
-  const handleLogout = () => {
-    sessionStorage.removeItem('noor_admin_auth');
-    setAuthed(false);
-  };
-
-  if (!authed) return <AdminLogin onLogin={() => setAuthed(true)} />;
-  return <AdminApp onLogout={handleLogout} />;
-}
-
 export default function App() {
   return (
-    <DataProvider>
-      {isAdminRoute ? <AdminGate /> : <PublicSite />}
-    </DataProvider>
+    <AuthProvider>
+      <DataProvider>
+        {isAdmin ? <AdminRoute /> : <PublicSite />}
+      </DataProvider>
+    </AuthProvider>
   );
 }
