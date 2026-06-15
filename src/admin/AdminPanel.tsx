@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useData, Category, GalleryItem } from '../context/DataContext';
 import './Admin.css';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const API = import.meta.env.VITE_API_URL || '';
 
 type Tab = 'items' | 'categories';
 

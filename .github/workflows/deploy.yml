@@ -18,11 +18,9 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm install
-        working-directory: noor-studio-full/frontend
 
       - name: Build frontend
         run: npm run build
-        working-directory: noor-studio-full/frontend
 
       - name: Deploy frontend to VPS
         uses: appleboy/scp-action@v0.1.7
@@ -31,9 +29,9 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
-          source: "noor-studio-full/frontend/dist/*"
+          source: "dist/*"
           target: ${{ secrets.VPS_WEBROOT }}
-          strip_components: 3
+          strip_components: 1
 
       - name: Deploy backend to VPS
         uses: appleboy/scp-action@v0.1.7
@@ -42,9 +40,9 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
-          source: "noor-studio-full/backend/server.js,noor-studio-full/backend/package.json"
+          source: "backend/server.js,backend/db.js,backend/config.js,backend/package.json,backend/scripts/gen-secret.js"
           target: /var/www/noor-studio/backend
-          strip_components: 2
+          strip_components: 1
 
       - name: Restart backend
         uses: appleboy/ssh-action@v1.0.0
@@ -55,6 +53,13 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             cd /var/www/noor-studio/backend
+            if [ ! -f .env ]; then
+              echo "❌  /var/www/noor-studio/backend/.env is missing."
+              echo "    Create it (with a strong JWT_SECRET) before deploying — see .env.example."
+              echo "    Generate values: node scripts/gen-secret.js \"your-password\""
+              exit 1
+            fi
             npm install --omit=dev
-            pm2 restart noor-backend || pm2 start server.js --name noor-backend
+            export NODE_ENV=production
+            pm2 restart noor-backend --update-env || pm2 start server.js --name noor-backend --update-env
             pm2 save
