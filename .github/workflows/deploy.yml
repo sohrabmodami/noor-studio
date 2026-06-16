@@ -11,7 +11,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      # ── Frontend (Node 20) ──
+      - name: Setup Node.js 20 (frontend)
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -22,6 +23,21 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      # ── Backend deps (Node 18 — must match the server's Node 18 ABI) ──
+      - name: Setup Node.js 18 (backend)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install backend dependencies (production only)
+        run: |
+          cd backend
+          npm ci --omit=dev || npm install --omit=dev
+
+      - name: Package backend (code + node_modules)
+        run: tar -czf backend.tar.gz backend
+
+      # ── Ship to VPS ──
       - name: Deploy frontend to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -33,18 +49,17 @@ jobs:
           target: ${{ secrets.VPS_WEBROOT }}
           strip_components: 1
 
-      - name: Deploy backend to VPS
+      - name: Upload backend bundle to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
-          source: "backend/server.js,backend/db.js,backend/config.js,backend/package.json,backend/scripts/gen-secret.js"
-          target: /var/www/noor-studio/backend
-          strip_components: 1
+          source: "backend.tar.gz"
+          target: /var/www/noor-studio
 
-      - name: Restart backend
+      - name: Extract & restart backend
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -52,14 +67,15 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           script: |
-            cd /var/www/noor-studio/backend
-            if [ ! -f .env ]; then
-              echo "❌  /var/www/noor-studio/backend/.env is missing."
-              echo "    Create it (with a strong JWT_SECRET) before deploying — see .env.example."
-              echo "    Generate values: node scripts/gen-secret.js \"your-password\""
+            set -e
+            cd /var/www/noor-studio
+            if [ ! -f backend/.env ]; then
+              echo "❌  backend/.env is missing — create it first (see backend/.env.example)."
               exit 1
             fi
-            npm install --omit=dev
-            export NODE_ENV=production
-            pm2 restart noor-backend --update-env || pm2 start server.js --name noor-backend --update-env
-            pm2 save
+            # extract over existing backend/ — overwrites code+node_modules, keeps .env and uploads/
+            tar -xzf backend.tar.gz
+            rm -f backend.tar.gz
+            systemctl restart noor-backend
+            sleep 2
+            systemctl is-active noor-backend
