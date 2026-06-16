@@ -76,6 +76,16 @@ jobs:
             # extract over existing backend/ — overwrites code+node_modules, keeps .env and uploads/
             tar -xzf backend.tar.gz
             rm -f backend.tar.gz
+            # ensure the systemd unit exists (idempotent — infra as code)
+            printf '%s\n' \
+              '[Unit]' 'Description=Noor Studio Backend (Node + SQLite)' 'After=network.target' \
+              '[Service]' 'Type=simple' 'WorkingDirectory=/var/www/noor-studio/backend' \
+              'ExecStart=/usr/bin/node server.js' 'Restart=always' 'RestartSec=3' \
+              'Environment=NODE_ENV=production' 'User=root' \
+              '[Install]' 'WantedBy=multi-user.target' \
+              > /etc/systemd/system/noor-backend.service
+            systemctl daemon-reload
+            systemctl enable noor-backend
             systemctl restart noor-backend
             sleep 2
             systemctl is-active noor-backend
