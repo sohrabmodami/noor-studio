@@ -1,6 +1,7 @@
+import { useData } from '../context/DataContext';
 import './Process.css';
 
-const steps = [
+const DEFAULT_STEPS = [
   { n: '۰۱', title: 'مشاوره رایگان', desc: 'یک جلسه آنلاین یا حضوری برای آشنایی با سلیقه و نیاز شما.' },
   { n: '۰۲', title: 'برنامه‌ریزی', desc: 'انتخاب لوکیشن، تاریخ و تنظیم جزئیات پروژه با هم.' },
   { n: '۰۳', title: 'روز عکاسی', desc: 'یک تجربه راحت و صمیمی — فقط خودتان باشید!' },
@@ -8,12 +9,16 @@ const steps = [
 ];
 
 export default function Process() {
+  const { content } = useData();
+  const p = content?.process;
+  const steps = p?.steps?.length ? p.steps : DEFAULT_STEPS;
+
   return (
     <section id="process" className="process-section">
       <div className="process-inner">
         <div className="section-head">
-          <span className="section-eyebrow">فرآیند کار</span>
-          <h2 className="section-title">چطور <strong>باهم کار می‌کنیم؟</strong></h2>
+          <span className="section-eyebrow">{p?.eyebrow ?? 'فرآیند کار'}</span>
+          <h2 className="section-title">{p?.title ?? 'چطور باهم کار می‌کنیم؟'}</h2>
         </div>
         <div className="process-cards">
           {steps.map(s => (

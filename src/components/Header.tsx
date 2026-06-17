@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useData } from '../context/DataContext';
 import './Header.css';
 
 const SECTIONS = [
@@ -44,6 +45,7 @@ function scrollToSection(id: string) {
 }
 
 export default function Header() {
+  const { logoUrl, apiBase } = useData();
   const [active, setActive]     = useState('hero');
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -84,7 +86,9 @@ export default function Header() {
       <nav className={`navbar${scrolled ? ' scrolled' : ''}`}>
 
         <button className="logo" onClick={() => handleNav('hero')}>
-          نور<span> استودیو</span>
+          {logoUrl
+            ? <img src={`${apiBase}${logoUrl}`} alt="نور استودیو" className="logo-img" />
+            : <>نور<span> استودیو</span></>}
         </button>
 
         {/* Desktop links */}

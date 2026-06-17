@@ -1,47 +1,94 @@
+import { useEffect, useState } from 'react';
+import { useData } from '../context/DataContext';
 import './Hero.css';
 
+// Warm gradient fallbacks for slides without an uploaded image.
+const FALLBACKS = [
+  'linear-gradient(135deg,#3a2520 0%,#c97b6b 60%,#e8a598 100%)',
+  'linear-gradient(135deg,#2c1f1a 0%,#8a5a4d 55%,#d4a090 100%)',
+  'linear-gradient(135deg,#4a2c24 0%,#b06a58 60%,#f0c9bd 100%)',
+];
+
 export default function Hero() {
+  const { slides, content, apiBase } = useData();
+  const [active, setActive] = useState(0);
+
+  const count = slides.length;
+
+  // Auto-advance every 5s (paused implicitly when there is 0/1 slide).
+  useEffect(() => {
+    if (count <= 1) return;
+    const t = setInterval(() => setActive(a => (a + 1) % count), 5000);
+    return () => clearInterval(t);
+  }, [count]);
+
+  // Keep active index valid if slides change.
+  useEffect(() => {
+    if (active >= count) setActive(0);
+  }, [count, active]);
+
+  const go = (i: number) => setActive((i + count) % count);
+
+  const hero = content?.hero;
+
   return (
     <section id="hero" className="hero">
-      <div className="hero-blob" />
-      <div className="hero-blob2" />
-      <div className="hero-inner">
-        <div className="hero-text">
-          <div className="hero-badge">✦ استودیو عکاسی نور</div>
-          <h1 className="hero-title">
-            لحظه‌هایتان را<br />
-            <strong>برای همیشه</strong><br />
-            نگه می‌داریم
-          </h1>
-          <p className="hero-desc">
-            عکاسی حرفه‌ای در دسته‌های عروسی، پرتره، خانوادگی و تجاری — با صمیمیت و دقت.
-          </p>
-          <div className="hero-btns">
-            <a href="#gallery" className="btn-main">مشاهده گالری</a>
-            <a href="#cta" className="btn-outline">مشاوره رایگان</a>
-          </div>
-        </div>
-        <div className="hero-visual">
-          <div className="hero-frame">
-            <svg viewBox="0 0 80 80" fill="none">
-              <circle cx="40" cy="40" r="28" stroke="#c97b6b" strokeWidth="3"/>
-              <circle cx="40" cy="40" r="12" stroke="#c97b6b" strokeWidth="2"/>
-              <rect x="18" y="28" width="44" height="32" rx="6" stroke="#c97b6b" strokeWidth="2.5"/>
-              <path d="M30 28V24h20v4" stroke="#c97b6b" strokeWidth="2"/>
-            </svg>
-          </div>
-          <div className="hero-tag-float">
-            <div className="dot" />
-            <div>
-              <span>در دسترس برای رزرو</span>
-              <small>خرداد ۱۴۰۵</small>
+      <div className="hero-slider">
+        <div className="slider-track">
+          {slides.map((s, i) => (
+            <div
+              key={s.id}
+              className={`slide${i === active ? ' on' : ''}`}
+              style={
+                s.imageUrl
+                  ? { backgroundImage: `linear-gradient(to top, rgba(20,12,10,.75) 0%, rgba(20,12,10,.15) 45%, rgba(20,12,10,.05) 100%), url(${apiBase}${s.imageUrl})` }
+                  : { backgroundImage: `linear-gradient(to top, rgba(20,12,10,.55) 0%, rgba(20,12,10,.05) 60%), ${FALLBACKS[i % FALLBACKS.length]}` }
+              }
+            >
+              <div className="slide-content">
+                {s.tag && <span className="slide-badge">{s.tag}</span>}
+                {s.title && <h1 className="slide-title">{s.title}</h1>}
+                {s.subtitle && <p className="slide-subtitle">{s.subtitle}</p>}
+                {hero && (hero.btnPrimaryText || hero.btnSecondaryText) && (
+                  <div className="slide-btns">
+                    {hero.btnPrimaryText && (
+                      <a href={hero.btnPrimaryLink} className="btn-main">{hero.btnPrimaryText}</a>
+                    )}
+                    {hero.btnSecondaryText && (
+                      <a href={hero.btnSecondaryLink} className="btn-outline-light">{hero.btnSecondaryText}</a>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-          <div className="hero-stat-float">
-            <div className="num">+۵۰</div>
-            <small>پروژه موفق</small>
-          </div>
+          ))}
+
+          {count === 0 && (
+            <div className="slide on" style={{ background: FALLBACKS[0] }}>
+              <div className="slide-content">
+                <h1 className="slide-title">استودیو عکاسی نور</h1>
+                <p className="slide-subtitle">برای افزودن اسلاید، وارد پنل مدیریت شوید.</p>
+              </div>
+            </div>
+          )}
         </div>
+
+        {count > 1 && (
+          <>
+            <button className="slider-arrow left" onClick={() => go(active - 1)} aria-label="قبلی">‹</button>
+            <button className="slider-arrow right" onClick={() => go(active + 1)} aria-label="بعدی">›</button>
+            <div className="slider-dots">
+              {slides.map((_, i) => (
+                <button
+                  key={i}
+                  className={`dot${i === active ? ' on' : ''}`}
+                  onClick={() => go(i)}
+                  aria-label={`اسلاید ${i + 1}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </section>
   );

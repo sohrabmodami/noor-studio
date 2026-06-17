@@ -44,6 +44,11 @@ db.exec(`
   );
 `);
 
+// ── Lightweight migrations for slides (add title/subtitle if missing) ──
+const slideCols = db.prepare('PRAGMA table_info(slides)').all().map(c => c.name);
+if (!slideCols.includes('title'))    db.exec('ALTER TABLE slides ADD COLUMN title TEXT');
+if (!slideCols.includes('subtitle')) db.exec('ALTER TABLE slides ADD COLUMN subtitle TEXT');
+
 // ── Seed / migrate on first run ──
 function isEmpty() {
   const c = db.prepare('SELECT COUNT(*) AS n FROM categories').get().n;
@@ -94,13 +99,13 @@ function seedDefaults() {
     db.prepare('INSERT OR IGNORE INTO categories (id, label) VALUES (?, ?)').run(c.id, c.label));
 
   const slides = [
-    { tag: 'عکاسی عروسی',    order: 0 },
-    { tag: 'پرتره حرفه‌ای',  order: 1 },
-    { tag: 'عکاسی خانوادگی', order: 2 },
+    { tag: 'عکاسی عروسی',    title: 'لحظه‌های عاشقانه‌ی شما',    subtitle: 'ثبت زیباترین روز زندگی‌تان با نگاهی هنری و صمیمی.', order: 0 },
+    { tag: 'پرتره حرفه‌ای',  title: 'چهره‌ی شما، داستان شما',      subtitle: 'پرتره‌هایی که شخصیت و حس واقعی‌تان را نشان می‌دهند.', order: 1 },
+    { tag: 'عکاسی خانوادگی', title: 'خاطره‌های ماندگار خانواده',  subtitle: 'گرمای کنار هم بودن را برای همیشه قاب می‌گیریم.', order: 2 },
   ];
   slides.forEach(s =>
-    db.prepare('INSERT INTO slides (id, tag, imageUrl, "order") VALUES (?, ?, NULL, ?)')
-      .run(randomUUID(), s.tag, s.order));
+    db.prepare('INSERT INTO slides (id, tag, title, subtitle, imageUrl, "order") VALUES (?, ?, ?, ?, NULL, ?)')
+      .run(randomUUID(), s.tag, s.title, s.subtitle, s.order));
 }
 
 if (isEmpty()) {

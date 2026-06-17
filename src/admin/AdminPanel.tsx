@@ -1,17 +1,19 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useData, Category, GalleryItem } from '../context/DataContext';
+import { useData, GalleryItem, Slide, SiteContent } from '../context/DataContext';
 import './Admin.css';
 
 const API = import.meta.env.VITE_API_URL || '';
 
-type Tab = 'items' | 'categories';
+type Tab = 'slides' | 'items' | 'categories' | 'content';
 
 export default function AdminPanel() {
   const { token, username, logout } = useAuth();
-  const { categories, items, loading, refresh, apiBase } = useData();
-  const [tab, setTab] = useState<Tab>('items');
+  const { categories, items, slides, content, logoUrl, loading, refresh, apiBase } = useData();
+  const [tab, setTab] = useState<Tab>('slides');
   const [filterCat, setFilterCat] = useState('all');
+
+  const authHeaders = { Authorization: `Bearer ${token}` };
 
   // ── Item Form ──
   const [showItemForm, setShowItemForm] = useState(false);
@@ -25,6 +27,18 @@ export default function AdminPanel() {
   const [itemErr, setItemErr] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // ── Slide Form ──
+  const [showSlideForm, setShowSlideForm] = useState(false);
+  const [editSlide, setEditSlide] = useState<Slide | null>(null);
+  const [slideTag, setSlideTag] = useState('');
+  const [slideTitle, setSlideTitle] = useState('');
+  const [slideSubtitle, setSlideSubtitle] = useState('');
+  const [slideFile, setSlideFile] = useState<File | null>(null);
+  const [slidePreview, setSlidePreview] = useState<string | null>(null);
+  const [slideLoading, setSlideLoading] = useState(false);
+  const [slideErr, setSlideErr] = useState('');
+  const slideFileRef = useRef<HTMLInputElement>(null);
+
   // ── Category Form ──
   const [showCatForm, setShowCatForm] = useState(false);
   const [catId, setCatId] = useState('');
@@ -32,13 +46,21 @@ export default function AdminPanel() {
   const [catErr, setCatErr] = useState('');
   const [catLoading, setCatLoading] = useState(false);
 
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  // ── Logo ──
+  const logoFileRef = useRef<HTMLInputElement>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
 
-  const authHeaders = { Authorization: `Bearer ${token}` };
+  // ── Content Form ──
+  const [form, setForm] = useState<SiteContent | null>(null);
+  const [contentSaving, setContentSaving] = useState(false);
+  const [contentMsg, setContentMsg] = useState('');
+  useEffect(() => { if (content) setForm(structuredClone(content)); }, [content]);
+
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const filteredItems = filterCat === 'all' ? items : items.filter(i => i.categoryId === filterCat);
 
-  // ── Reset item form ──
+  // ════════ ITEMS ════════
   const resetItemForm = () => {
     setEditItem(null); setItemTitle(''); setItemCat(''); setItemDesc('');
     setItemFile(null); setItemPreview(null); setItemErr('');
@@ -51,13 +73,11 @@ export default function AdminPanel() {
     setItemPreview(item.imageUrl ? `${apiBase}${item.imageUrl}` : null);
     setItemErr(''); setShowItemForm(true);
   };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleItemFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     setItemFile(file);
     if (file) setItemPreview(URL.createObjectURL(file));
   };
-
   const handleItemSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setItemErr(''); setItemLoading(true);
@@ -66,10 +86,8 @@ export default function AdminPanel() {
     fd.append('categoryId', itemCat);
     fd.append('description', itemDesc);
     if (itemFile) fd.append('image', itemFile);
-
     const url = editItem ? `${API}/api/admin/items/${editItem.id}` : `${API}/api/admin/items`;
     const method = editItem ? 'PUT' : 'POST';
-
     try {
       const res = await fetch(url, { method, headers: authHeaders, body: fd });
       const data = await res.json();
@@ -78,12 +96,64 @@ export default function AdminPanel() {
     } catch { setItemErr('خطای شبکه'); }
     setItemLoading(false);
   };
-
   const handleDeleteItem = async (id: string) => {
     const res = await fetch(`${API}/api/admin/items/${id}`, { method: 'DELETE', headers: authHeaders });
     if (res.ok) { refresh(); setDeleteConfirm(null); }
   };
 
+  // ════════ SLIDES ════════
+  const resetSlideForm = () => {
+    setEditSlide(null); setSlideTag(''); setSlideTitle(''); setSlideSubtitle('');
+    setSlideFile(null); setSlidePreview(null); setSlideErr('');
+    if (slideFileRef.current) slideFileRef.current.value = '';
+  };
+  const openNewSlide = () => { resetSlideForm(); setShowSlideForm(true); };
+  const openEditSlide = (s: Slide) => {
+    setEditSlide(s); setSlideTag(s.tag || ''); setSlideTitle(s.title || '');
+    setSlideSubtitle(s.subtitle || ''); setSlideFile(null);
+    setSlidePreview(s.imageUrl ? `${apiBase}${s.imageUrl}` : null);
+    setSlideErr(''); setShowSlideForm(true);
+  };
+  const handleSlideFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setSlideFile(file);
+    if (file) setSlidePreview(URL.createObjectURL(file));
+  };
+  const handleSlideSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setSlideErr(''); setSlideLoading(true);
+    const fd = new FormData();
+    fd.append('tag', slideTag);
+    fd.append('title', slideTitle);
+    fd.append('subtitle', slideSubtitle);
+    if (slideFile) fd.append('image', slideFile);
+    const url = editSlide ? `${API}/api/admin/slides/${editSlide.id}` : `${API}/api/admin/slides`;
+    const method = editSlide ? 'PUT' : 'POST';
+    try {
+      const res = await fetch(url, { method, headers: authHeaders, body: fd });
+      const data = await res.json();
+      if (!res.ok) { setSlideErr(data.error || 'خطا'); setSlideLoading(false); return; }
+      refresh(); setShowSlideForm(false); resetSlideForm();
+    } catch { setSlideErr('خطای شبکه'); }
+    setSlideLoading(false);
+  };
+  const handleDeleteSlide = async (id: string) => {
+    const res = await fetch(`${API}/api/admin/slides/${id}`, { method: 'DELETE', headers: authHeaders });
+    if (res.ok) { refresh(); setDeleteConfirm(null); }
+  };
+  const moveSlide = async (index: number, dir: -1 | 1) => {
+    const target = index + dir;
+    if (target < 0 || target >= slides.length) return;
+    const a = slides[index], b = slides[target];
+    const put = (s: Slide, order: number) => {
+      const fd = new FormData(); fd.append('order', String(order));
+      return fetch(`${API}/api/admin/slides/${s.id}`, { method: 'PUT', headers: authHeaders, body: fd });
+    };
+    await Promise.all([put(a, b.order), put(b, a.order)]);
+    refresh();
+  };
+
+  // ════════ CATEGORIES ════════
   const handleCatSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setCatErr(''); setCatLoading(true);
@@ -99,7 +169,6 @@ export default function AdminPanel() {
     } catch { setCatErr('خطای شبکه'); }
     setCatLoading(false);
   };
-
   const handleDeleteCat = async (id: string) => {
     const res = await fetch(`${API}/api/admin/categories/${id}`, { method: 'DELETE', headers: authHeaders });
     const data = await res.json();
@@ -107,17 +176,72 @@ export default function AdminPanel() {
     refresh(); setDeleteConfirm(null);
   };
 
+  // ════════ LOGO ════════
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoBusy(true);
+    const fd = new FormData();
+    fd.append('logo', file);
+    try {
+      const res = await fetch(`${API}/api/admin/logo`, { method: 'POST', headers: authHeaders, body: fd });
+      if (res.ok) refresh();
+    } catch { /* ignore */ }
+    setLogoBusy(false);
+    if (logoFileRef.current) logoFileRef.current.value = '';
+  };
+  const handleLogoRemove = async () => {
+    setLogoBusy(true);
+    try {
+      const res = await fetch(`${API}/api/admin/logo`, { method: 'DELETE', headers: authHeaders });
+      if (res.ok) refresh();
+    } catch { /* ignore */ }
+    setLogoBusy(false);
+  };
+
+  // ════════ CONTENT ════════
+  const saveContent = async () => {
+    if (!form) return;
+    setContentSaving(true); setContentMsg('');
+    try {
+      const res = await fetch(`${API}/api/admin/content`, {
+        method: 'PUT',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) { setContentMsg('خطا در ذخیره'); }
+      else { refresh(); setContentMsg('✓ ذخیره شد'); }
+    } catch { setContentMsg('خطای شبکه'); }
+    setContentSaving(false);
+    setTimeout(() => setContentMsg(''), 2500);
+  };
+  // Helpers to update nested form fields immutably.
+  const setF = (section: keyof SiteContent, key: string, value: string) =>
+    setForm(f => f ? { ...f, [section]: { ...(f[section] as any), [key]: value } } : f);
+  const setStep = (i: number, key: string, value: string) =>
+    setForm(f => {
+      if (!f) return f;
+      const steps = f.process.steps.map((s, idx) => idx === i ? { ...s, [key]: value } : s);
+      return { ...f, process: { ...f.process, steps } };
+    });
+
   return (
     <div className="admin-layout">
       {/* ── Sidebar ── */}
       <aside className="admin-sidebar">
         <div className="sidebar-logo">نور<span> ادمین</span></div>
         <nav className="sidebar-nav">
+          <button className={tab === 'slides' ? 'active' : ''} onClick={() => setTab('slides')}>
+            <span>🎞</span> اسلایدر
+          </button>
           <button className={tab === 'items' ? 'active' : ''} onClick={() => setTab('items')}>
             <span>🖼</span> آیتم‌های گالری
           </button>
           <button className={tab === 'categories' ? 'active' : ''} onClick={() => setTab('categories')}>
             <span>🏷</span> دسته‌بندی‌ها
+          </button>
+          <button className={tab === 'content' ? 'active' : ''} onClick={() => setTab('content')}>
+            <span>📝</span> محتوای صفحه
           </button>
         </nav>
         <div className="sidebar-footer">
@@ -129,6 +253,52 @@ export default function AdminPanel() {
       {/* ── Main ── */}
       <main className="admin-main">
 
+        {/* ════ SLIDES TAB ════ */}
+        {tab === 'slides' && (
+          <div>
+            <div className="admin-topbar">
+              <h1>اسلایدر صفحه اصلی</h1>
+              <button className="btn-add" onClick={openNewSlide}>+ افزودن اسلاید</button>
+            </div>
+            {loading ? (
+              <div className="admin-loading">در حال بارگذاری...</div>
+            ) : slides.length === 0 ? (
+              <div className="admin-empty">
+                <span>🎞</span><p>هیچ اسلایدی وجود ندارد</p>
+                <button className="btn-add" onClick={openNewSlide}>+ افزودن اولین اسلاید</button>
+              </div>
+            ) : (
+              <div className="slides-grid">
+                {slides.map((s, i) => (
+                  <div key={s.id} className="slide-row">
+                    <div
+                      className="slide-thumb"
+                      style={s.imageUrl
+                        ? { backgroundImage: `url(${apiBase}${s.imageUrl})` }
+                        : { background: 'linear-gradient(135deg,#3a2520,#c97b6b)' }}
+                    >
+                      {!s.imageUrl && <span>🖼</span>}
+                    </div>
+                    <div className="slide-row-info">
+                      {s.tag && <span className="item-cat-badge">{s.tag}</span>}
+                      <div className="item-title">{s.title || <em style={{ color: '#b89' }}>بدون عنوان</em>}</div>
+                      {s.subtitle && <p className="item-desc">{s.subtitle}</p>}
+                    </div>
+                    <div className="slide-order">
+                      <button onClick={() => moveSlide(i, -1)} disabled={i === 0} title="بالا">▲</button>
+                      <button onClick={() => moveSlide(i, 1)} disabled={i === slides.length - 1} title="پایین">▼</button>
+                    </div>
+                    <div className="item-actions">
+                      <button className="btn-edit" onClick={() => openEditSlide(s)}>ویرایش</button>
+                      <button className="btn-del" onClick={() => setDeleteConfirm(`slide:${s.id}`)}>حذف</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ════ ITEMS TAB ════ */}
         {tab === 'items' && (
           <div>
@@ -136,8 +306,6 @@ export default function AdminPanel() {
               <h1>آیتم‌های گالری</h1>
               <button className="btn-add" onClick={openNewItem}>+ افزودن آیتم</button>
             </div>
-
-            {/* Filter */}
             <div className="admin-filter-bar">
               <button className={`acat-btn${filterCat === 'all' ? ' on' : ''}`} onClick={() => setFilterCat('all')}>
                 همه ({items.length})
@@ -152,8 +320,6 @@ export default function AdminPanel() {
                 </button>
               ))}
             </div>
-
-            {/* Items Table */}
             {loading ? (
               <div className="admin-loading">در حال بارگذاری...</div>
             ) : filteredItems.length === 0 ? (
@@ -220,7 +386,182 @@ export default function AdminPanel() {
             </div>
           </div>
         )}
+
+        {/* ════ CONTENT TAB ════ */}
+        {tab === 'content' && form && (
+          <div>
+            <div className="admin-topbar">
+              <h1>محتوای صفحه</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                {contentMsg && <span className="content-msg">{contentMsg}</span>}
+                <button className="btn-add" onClick={saveContent} disabled={contentSaving}>
+                  {contentSaving ? 'در حال ذخیره...' : 'ذخیره تغییرات'}
+                </button>
+              </div>
+            </div>
+
+            {/* Logo */}
+            <div className="content-card">
+              <h3>لوگو سایت</h3>
+              <div className="logo-manage">
+                <div className="logo-preview">
+                  {logoUrl
+                    ? <img src={`${apiBase}${logoUrl}`} alt="لوگو فعلی" />
+                    : <span className="logo-text-fallback">نور<i> استودیو</i></span>}
+                </div>
+                <div className="logo-actions">
+                  <button type="button" className="btn-save" disabled={logoBusy} onClick={() => logoFileRef.current?.click()}>
+                    {logoBusy ? 'در حال آپلود...' : logoUrl ? 'تغییر لوگو' : 'آپلود لوگو'}
+                  </button>
+                  {logoUrl && (
+                    <button type="button" className="btn-cancel" disabled={logoBusy} onClick={handleLogoRemove}>
+                      حذف لوگو
+                    </button>
+                  )}
+                  <input ref={logoFileRef} type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
+                  <small className="content-hint">اگر لوگو نگذارید، نام متنی «نور استودیو» نمایش داده می‌شود. JPG/PNG/WEBP — حداکثر ۱۰MB.</small>
+                </div>
+              </div>
+            </div>
+
+            {/* Hero buttons + badge */}
+            <div className="content-card">
+              <h3>هیرو / اسلایدر</h3>
+              <div className="content-grid">
+                <label>بَج (متن چیپ بالای اسلاید)
+                  <input value={form.hero.badge} onChange={e => setF('hero', 'badge', e.target.value)} />
+                </label>
+                <label>متن دکمه اول
+                  <input value={form.hero.btnPrimaryText} onChange={e => setF('hero', 'btnPrimaryText', e.target.value)} />
+                </label>
+                <label>لینک دکمه اول
+                  <input dir="ltr" value={form.hero.btnPrimaryLink} onChange={e => setF('hero', 'btnPrimaryLink', e.target.value)} />
+                </label>
+                <label>متن دکمه دوم
+                  <input value={form.hero.btnSecondaryText} onChange={e => setF('hero', 'btnSecondaryText', e.target.value)} />
+                </label>
+                <label>لینک دکمه دوم
+                  <input dir="ltr" value={form.hero.btnSecondaryLink} onChange={e => setF('hero', 'btnSecondaryLink', e.target.value)} />
+                </label>
+              </div>
+              <small className="content-hint">عنوان و زیرعنوان هر اسلاید را از تب «اسلایدر» ویرایش کنید.</small>
+            </div>
+
+            {/* Process */}
+            <div className="content-card">
+              <h3>بخش فرآیند کار</h3>
+              <div className="content-grid">
+                <label>عنوان کوچک
+                  <input value={form.process.eyebrow} onChange={e => setF('process', 'eyebrow', e.target.value)} />
+                </label>
+                <label>عنوان اصلی
+                  <input value={form.process.title} onChange={e => setF('process', 'title', e.target.value)} />
+                </label>
+              </div>
+              {form.process.steps.map((s, i) => (
+                <div key={i} className="content-step">
+                  <label>شماره <input value={s.n} onChange={e => setStep(i, 'n', e.target.value)} /></label>
+                  <label>عنوان مرحله <input value={s.title} onChange={e => setStep(i, 'title', e.target.value)} /></label>
+                  <label>توضیح <input value={s.desc} onChange={e => setStep(i, 'desc', e.target.value)} /></label>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA */}
+            <div className="content-card">
+              <h3>بخش دعوت به اقدام (CTA)</h3>
+              <div className="content-grid">
+                <label>عنوان
+                  <input value={form.cta.title} onChange={e => setF('cta', 'title', e.target.value)} />
+                </label>
+                <label>متن
+                  <input value={form.cta.text} onChange={e => setF('cta', 'text', e.target.value)} />
+                </label>
+                <label>متن دکمه اول
+                  <input value={form.cta.btnPrimaryText} onChange={e => setF('cta', 'btnPrimaryText', e.target.value)} />
+                </label>
+                <label>لینک دکمه اول
+                  <input dir="ltr" value={form.cta.btnPrimaryLink} onChange={e => setF('cta', 'btnPrimaryLink', e.target.value)} />
+                </label>
+                <label>متن دکمه دوم
+                  <input value={form.cta.btnSecondaryText} onChange={e => setF('cta', 'btnSecondaryText', e.target.value)} />
+                </label>
+                <label>لینک دکمه دوم
+                  <input dir="ltr" value={form.cta.btnSecondaryLink} onChange={e => setF('cta', 'btnSecondaryLink', e.target.value)} />
+                </label>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="content-card">
+              <h3>فوتر</h3>
+              <div className="content-grid">
+                <label>نام برند
+                  <input value={form.footer.brand} onChange={e => setF('footer', 'brand', e.target.value)} />
+                </label>
+                <label>متن کپی‌رایت
+                  <input value={form.footer.copyright} onChange={e => setF('footer', 'copyright', e.target.value)} />
+                </label>
+                <label>لینک اینستاگرام
+                  <input dir="ltr" value={form.footer.instagram} onChange={e => setF('footer', 'instagram', e.target.value)} />
+                </label>
+                <label>لینک تلگرام
+                  <input dir="ltr" value={form.footer.telegram} onChange={e => setF('footer', 'telegram', e.target.value)} />
+                </label>
+                <label>لینک واتساپ
+                  <input dir="ltr" value={form.footer.whatsapp} onChange={e => setF('footer', 'whatsapp', e.target.value)} />
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
+
+      {/* ════ SLIDE FORM MODAL ════ */}
+      {showSlideForm && (
+        <div className="modal-backdrop" onClick={() => { setShowSlideForm(false); resetSlideForm(); }}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{editSlide ? 'ویرایش اسلاید' : 'افزودن اسلاید جدید'}</h2>
+              <button onClick={() => { setShowSlideForm(false); resetSlideForm(); }}>✕</button>
+            </div>
+            <form onSubmit={handleSlideSubmit} className="modal-form">
+              <div
+                className="upload-zone"
+                onClick={() => slideFileRef.current?.click()}
+                style={slidePreview ? { backgroundImage: `url(${slidePreview})` } : {}}
+              >
+                {!slidePreview && (
+                  <>
+                    <span className="upload-icon">🖼</span>
+                    <p>کلیک کنید و تصویر اسلاید را انتخاب کنید</p>
+                    <small>JPG، PNG، WEBP — حداکثر ۱۰MB</small>
+                  </>
+                )}
+                {slidePreview && <div className="upload-overlay">تغییر تصویر</div>}
+                <input ref={slideFileRef} type="file" accept="image/*" onChange={handleSlideFile} style={{ display: 'none' }} />
+              </div>
+
+              <label>بَج / تگ (اختیاری)</label>
+              <input value={slideTag} onChange={e => setSlideTag(e.target.value)} placeholder="مثلاً: عکاسی عروسی" />
+
+              <label>عنوان</label>
+              <input value={slideTitle} onChange={e => setSlideTitle(e.target.value)} placeholder="عنوان روی اسلاید" />
+
+              <label>زیرعنوان</label>
+              <textarea value={slideSubtitle} onChange={e => setSlideSubtitle(e.target.value)} placeholder="توضیح کوتاه زیر عنوان" rows={3} />
+
+              {slideErr && <div className="err-msg">{slideErr}</div>}
+              <div className="modal-actions">
+                <button type="button" className="btn-cancel" onClick={() => { setShowSlideForm(false); resetSlideForm(); }}>انصراف</button>
+                <button type="submit" className="btn-save" disabled={slideLoading}>
+                  {slideLoading ? 'در حال ذخیره...' : editSlide ? 'ذخیره تغییرات' : 'افزودن اسلاید'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ════ ITEM FORM MODAL ════ */}
       {showItemForm && (
@@ -231,8 +572,6 @@ export default function AdminPanel() {
               <button onClick={() => { setShowItemForm(false); resetItemForm(); }}>✕</button>
             </div>
             <form onSubmit={handleItemSubmit} className="modal-form">
-
-              {/* Image Upload */}
               <div
                 className="upload-zone"
                 onClick={() => fileRef.current?.click()}
@@ -246,7 +585,7 @@ export default function AdminPanel() {
                   </>
                 )}
                 {itemPreview && <div className="upload-overlay">تغییر تصویر</div>}
-                <input ref={fileRef} type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
+                <input ref={fileRef} type="file" accept="image/*" onChange={handleItemFile} style={{ display: 'none' }} />
               </div>
 
               <label>عنوان <span className="req">*</span></label>
@@ -311,6 +650,7 @@ export default function AdminPanel() {
               <button className="btn-del-confirm" onClick={() => {
                 const [type, id] = deleteConfirm.split(':');
                 if (type === 'item') handleDeleteItem(id);
+                else if (type === 'slide') handleDeleteSlide(id);
                 else handleDeleteCat(id);
               }}>بله، حذف کن</button>
             </div>

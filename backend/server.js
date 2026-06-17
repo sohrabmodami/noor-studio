@@ -17,6 +17,53 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 const JWT_SECRET = cfg.JWT_SECRET;
 
+// ── Default editable section content ──
+// Stored in settings under key "content" as JSON. The public GET merges
+// saved values over these defaults so the site never renders blank.
+const DEFAULT_CONTENT = {
+  hero: {
+    badge: '✦ استودیو عکاسی نور',
+    btnPrimaryText: 'مشاهده گالری',
+    btnPrimaryLink: '#gallery',
+    btnSecondaryText: 'مشاوره رایگان',
+    btnSecondaryLink: '#cta',
+  },
+  process: {
+    eyebrow: 'فرآیند کار',
+    title: 'چطور باهم کار می‌کنیم؟',
+    steps: [
+      { n: '۰۱', title: 'مشاوره رایگان', desc: 'یک جلسه آنلاین یا حضوری برای آشنایی با سلیقه و نیاز شما.' },
+      { n: '۰۲', title: 'برنامه‌ریزی',  desc: 'انتخاب لوکیشن، تاریخ و تنظیم جزئیات پروژه با هم.' },
+      { n: '۰۳', title: 'روز عکاسی',    desc: 'یک تجربه راحت و صمیمی — فقط خودتان باشید!' },
+      { n: '۰۴', title: 'تحویل آثار',   desc: 'ویرایش حرفه‌ای و تحویل فایل‌ها در ۳ تا ۴ هفته.' },
+    ],
+  },
+  cta: {
+    title: 'آماده‌اید لحظاتتان را جاودان کنید؟',
+    text: 'همین الان رزرو کنید — اولین مشاوره کاملاً رایگان است.',
+    btnPrimaryText: 'ارسال ایمیل',
+    btnPrimaryLink: 'mailto:Maryam.daemii@gmail.com',
+    btnSecondaryText: 'اینستاگرام ما',
+    btnSecondaryLink: 'https://instagram.com',
+  },
+  footer: {
+    brand: 'نور استودیو',
+    copyright: '© ۱۴۰۵ — تمامی حقوق محفوظ است',
+    instagram: '#',
+    telegram: '#',
+    whatsapp: '#',
+  },
+};
+
+// Deep-merge saved content over defaults (one level into each section).
+function mergeContent(saved) {
+  const out = {};
+  for (const section of Object.keys(DEFAULT_CONTENT)) {
+    out[section] = { ...DEFAULT_CONTENT[section], ...(saved?.[section] || {}) };
+  }
+  return out;
+}
+
 app.set('trust proxy', 1); // behind nginx — needed for correct rate-limit IPs
 
 // ── Security middleware ──
@@ -112,6 +159,13 @@ app.get('/api/slides', (req, res) => {
   res.json(db.prepare('SELECT * FROM slides ORDER BY "order" ASC').all());
 });
 
+// GET editable section content (public, merged with defaults)
+app.get('/api/content', (req, res) => {
+  let saved = null;
+  try { saved = JSON.parse(getSetting('content') || 'null'); } catch { saved = null; }
+  res.json(mergeContent(saved));
+});
+
 // ══════════════════════════════════════
 //  AUTH
 // ══════════════════════════════════════
@@ -168,17 +222,50 @@ app.delete('/api/admin/logo', authMiddleware, (req, res) => {
 //  ADMIN — SLIDES
 // ══════════════════════════════════════
 
+// Create a new slide (optionally with image).
+app.post('/api/admin/slides', authMiddleware, upload.single('image'), (req, res) => {
+  const { tag, title, subtitle } = req.body;
+  const maxOrder = db.prepare('SELECT MAX("order") AS m FROM slides').get().m;
+  const slide = {
+    id: randomUUID(),
+    tag: tag || null,
+    title: title || null,
+    subtitle: subtitle || null,
+    imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
+    order: (maxOrder == null ? -1 : maxOrder) + 1,
+  };
+  db.prepare(`INSERT INTO slides (id, tag, title, subtitle, imageUrl, "order")
+    VALUES (@id, @tag, @title, @subtitle, @imageUrl, @order)`).run(slide);
+  res.status(201).json(slide);
+});
+
 app.put('/api/admin/slides/:id', authMiddleware, upload.single('image'), (req, res) => {
   const slide = db.prepare('SELECT * FROM slides WHERE id = ?').get(req.params.id);
   if (!slide) return res.status(404).json({ error: 'اسلاید یافت نشد' });
 
-  const { tag } = req.body;
+  const { tag, title, subtitle, order } = req.body;
   if (req.file && slide.imageUrl) deleteUpload(slide.imageUrl);
 
-  const newTag = tag !== undefined ? tag : slide.tag;
-  const newImg = req.file ? `/uploads/${req.file.filename}` : slide.imageUrl;
-  db.prepare('UPDATE slides SET tag = ?, imageUrl = ? WHERE id = ?').run(newTag, newImg, slide.id);
+  const updated = {
+    id: slide.id,
+    tag:      tag      !== undefined ? tag      : slide.tag,
+    title:    title    !== undefined ? title    : slide.title,
+    subtitle: subtitle !== undefined ? subtitle : slide.subtitle,
+    imageUrl: req.file ? `/uploads/${req.file.filename}` : slide.imageUrl,
+    order:    order    !== undefined ? Number(order) : slide.order,
+  };
+  db.prepare(`UPDATE slides SET tag = @tag, title = @title, subtitle = @subtitle,
+    imageUrl = @imageUrl, "order" = @order WHERE id = @id`).run(updated);
   res.json(db.prepare('SELECT * FROM slides WHERE id = ?').get(slide.id));
+});
+
+// Delete an entire slide (and its image).
+app.delete('/api/admin/slides/:id', authMiddleware, (req, res) => {
+  const slide = db.prepare('SELECT * FROM slides WHERE id = ?').get(req.params.id);
+  if (!slide) return res.status(404).json({ error: 'اسلاید یافت نشد' });
+  deleteUpload(slide.imageUrl);
+  db.prepare('DELETE FROM slides WHERE id = ?').run(slide.id);
+  res.json({ message: 'حذف شد' });
 });
 
 app.delete('/api/admin/slides/:id/image', authMiddleware, (req, res) => {
@@ -189,6 +276,17 @@ app.delete('/api/admin/slides/:id/image', authMiddleware, (req, res) => {
     db.prepare('UPDATE slides SET imageUrl = NULL WHERE id = ?').run(slide.id);
   }
   res.json(db.prepare('SELECT * FROM slides WHERE id = ?').get(slide.id));
+});
+
+// ══════════════════════════════════════
+//  ADMIN — CONTENT (section text)
+// ══════════════════════════════════════
+
+app.put('/api/admin/content', authMiddleware, (req, res) => {
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const merged = mergeContent(body);
+  setSetting('content', JSON.stringify(merged));
+  res.json(merged);
 });
 
 // ══════════════════════════════════════
