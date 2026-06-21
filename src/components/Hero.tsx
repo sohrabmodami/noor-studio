@@ -39,35 +39,34 @@ export default function Hero() {
             <div
               key={s.id}
               className={`slide${i === active ? ' on' : ''}`}
-              style={
-                s.imageUrl
-                  ? { backgroundImage: `linear-gradient(to top, rgba(20,12,10,.75) 0%, rgba(20,12,10,.15) 45%, rgba(20,12,10,.05) 100%), url(${apiBase}${s.imageUrl})` }
-                  : { backgroundImage: `linear-gradient(to top, rgba(20,12,10,.55) 0%, rgba(20,12,10,.05) 60%), ${FALLBACKS[i % FALLBACKS.length]}` }
-              }
             >
               <div className="slide-content">
-                {s.tag && <span className="slide-badge">{s.tag}</span>}
+                {(s.tag || hero?.badge) && <span className="slide-badge">{s.tag || hero?.badge}</span>}
                 {s.title && <h1 className="slide-title">{s.title}</h1>}
-                {s.subtitle && <p className="slide-subtitle">{s.subtitle}</p>}
-                {hero && (hero.btnPrimaryText || hero.btnSecondaryText) && (
+                {hero?.btnPrimaryText && (
                   <div className="slide-btns">
-                    {hero.btnPrimaryText && (
-                      <a href={hero.btnPrimaryLink} className="btn-main">{hero.btnPrimaryText}</a>
-                    )}
-                    {hero.btnSecondaryText && (
-                      <a href={hero.btnSecondaryLink} className="btn-outline-light">{hero.btnSecondaryText}</a>
-                    )}
+                    <a href={hero.btnPrimaryLink} className="btn-main">{hero.btnPrimaryText}</a>
                   </div>
+                )}
+              </div>
+              <div className="slide-media">
+                {s.imageUrl ? (
+                  <img src={`${apiBase}${s.imageUrl}`} alt={s.title || s.tag || 'اسلاید نور استودیو'} />
+                ) : (
+                  <div className="slide-fallback" style={{ background: FALLBACKS[i % FALLBACKS.length] }} />
                 )}
               </div>
             </div>
           ))}
 
           {count === 0 && (
-            <div className="slide on" style={{ background: FALLBACKS[0] }}>
+            <div className="slide on">
               <div className="slide-content">
+                <span className="slide-badge">استودیو عکاسی نور</span>
                 <h1 className="slide-title">استودیو عکاسی نور</h1>
-                <p className="slide-subtitle">برای افزودن اسلاید، وارد پنل مدیریت شوید.</p>
+              </div>
+              <div className="slide-media">
+                <div className="slide-fallback" style={{ background: FALLBACKS[0] }} />
               </div>
             </div>
           )}
@@ -75,8 +74,8 @@ export default function Hero() {
 
         {count > 1 && (
           <>
-            <button className="slider-arrow left" onClick={() => go(active - 1)} aria-label="قبلی">‹</button>
-            <button className="slider-arrow right" onClick={() => go(active + 1)} aria-label="بعدی">›</button>
+            <button className="slider-arrow left" onClick={() => go(active + 1)} aria-label="بعدی">›</button>
+            <button className="slider-arrow right" onClick={() => go(active - 1)} aria-label="قبلی">‹</button>
             <div className="slider-dots">
               {slides.map((_, i) => (
                 <button
