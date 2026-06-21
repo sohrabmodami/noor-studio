@@ -46,6 +46,12 @@ const DEFAULT_CONTENT = {
     btnSecondaryText: 'اینستاگرام ما',
     btnSecondaryLink: 'https://instagram.com',
   },
+  quickContact: {
+    enabled: true,
+    text: 'برای رزرو و مشاوره رایگان در تماس باشید',
+    phoneLink: 'mailto:Maryam.daemii@gmail.com',
+    whatsappLink: '#',
+  },
   footer: {
     brand: 'نور استودیو',
     copyright: '© ۱۴۰۵ — تمامی حقوق محفوظ است',

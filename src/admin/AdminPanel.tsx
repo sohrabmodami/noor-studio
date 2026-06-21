@@ -216,7 +216,7 @@ export default function AdminPanel() {
     setTimeout(() => setContentMsg(''), 2500);
   };
   // Helpers to update nested form fields immutably.
-  const setF = (section: keyof SiteContent, key: string, value: string) =>
+  const setF = (section: keyof SiteContent, key: string, value: string | boolean) =>
     setForm(f => f ? { ...f, [section]: { ...(f[section] as any), [key]: value } } : f);
   const setStep = (i: number, key: string, value: string) =>
     setForm(f => {
@@ -490,6 +490,31 @@ export default function AdminPanel() {
                   <input dir="ltr" value={form.cta.btnSecondaryLink} onChange={e => setF('cta', 'btnSecondaryLink', e.target.value)} />
                 </label>
               </div>
+            </div>
+
+            {/* Quick contact */}
+            <div className="content-card">
+              <h3>تماس سریع پایین صفحه</h3>
+              <label className="content-check">
+                <input
+                  type="checkbox"
+                  checked={form.quickContact.enabled}
+                  onChange={e => setF('quickContact', 'enabled', e.target.checked)}
+                />
+                نمایش آیکن‌های تماس و واتساپ در گوشه صفحه
+              </label>
+              <div className="content-grid">
+                <label>متن نوار
+                  <input value={form.quickContact.text} onChange={e => setF('quickContact', 'text', e.target.value)} />
+                </label>
+                <label>لینک تماس
+                  <input dir="ltr" value={form.quickContact.phoneLink} onChange={e => setF('quickContact', 'phoneLink', e.target.value)} />
+                </label>
+                <label>لینک واتساپ
+                  <input dir="ltr" value={form.quickContact.whatsappLink} onChange={e => setF('quickContact', 'whatsappLink', e.target.value)} />
+                </label>
+              </div>
+              <small className="content-hint">برای تماس می‌توانید از tel: یا mailto: استفاده کنید. لینک واتساپ معمولاً با https://wa.me/ شروع می‌شود.</small>
             </div>
 
             {/* Footer */}

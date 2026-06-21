@@ -46,6 +46,12 @@ export interface SiteContent {
     btnSecondaryText: string;
     btnSecondaryLink: string;
   };
+  quickContact: {
+    enabled: boolean;
+    text: string;
+    phoneLink: string;
+    whatsappLink: string;
+  };
   footer: {
     brand: string;
     copyright: string;

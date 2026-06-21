@@ -260,6 +260,13 @@
   color: #2c1f1a; transition: border-color .2s;
 }
 .content-grid input:focus, .content-step input:focus { border-color: #e8a598; }
+.content-check {
+  display: flex; align-items: center; gap: .55rem; margin-bottom: 1rem;
+  font-size: .86rem; font-weight: 700; color: #2c1f1a; cursor: pointer;
+}
+.content-check input {
+  width: 18px; height: 18px; accent-color: #c97b6b; cursor: pointer;
+}
 .content-step {
   display: grid; grid-template-columns: 90px 1fr 2fr; gap: .7rem;
   padding-top: .9rem; margin-top: .9rem; border-top: 1px dashed #f0e0d8;

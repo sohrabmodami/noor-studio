@@ -1,5 +1,8 @@
 .footer {
-  padding: 1.8rem 2.5rem; border-top: 1px solid #f0e0d8;
+  width: min(calc(100% - 40px), 1160px);
+  margin: 2rem auto 7rem;
+  padding: 1.8rem 0;
+  border-top: 1px solid #f0e0d8;
   display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;
 }
 .footer-logo { font-size: 1rem; font-weight: 700; color: #c97b6b; }
@@ -12,4 +15,4 @@
   text-decoration: none; transition: background .2s, transform .2s;
 }
 .soc:hover { background: #e8a598; color: #fff; transform: translateY(-2px); }
-@media (max-width: 768px) { .footer { flex-direction: column; text-align: center; padding: 1.5rem; } }
+@media (max-width: 768px) { .footer { flex-direction: column; text-align: center; padding: 1.5rem 0; margin-bottom: 6.5rem; } }

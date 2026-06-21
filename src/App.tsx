@@ -8,6 +8,7 @@ import Gallery from './components/Gallery';
 import Process from './components/Process';
 import CTA from './components/CTA';
 import Footer from './components/Footer';
+import StickyContactBar from './components/StickyContactBar';
 import './App.css';
 
 const isAdmin = new URLSearchParams(window.location.search).has('admin');
@@ -26,6 +27,7 @@ function PublicSite() {
       <Process />
       <CTA />
       <Footer />
+      <StickyContactBar />
     </>
   );
 }
