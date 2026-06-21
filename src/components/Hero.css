@@ -15,6 +15,18 @@
   box-shadow: none;
 }
 
+.hero-slider::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 150px;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(18,10,8,.44) 0%, rgba(18,10,8,.18) 48%, rgba(18,10,8,0) 100%),
+    radial-gradient(ellipse at top, rgba(255,244,238,.18) 0%, rgba(255,244,238,0) 66%);
+  pointer-events: none;
+}
+
 .slider-track {
   position: relative;
   width: 100%;
