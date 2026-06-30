@@ -19,7 +19,7 @@ export default function AdminPanel() {
   const [showItemForm, setShowItemForm] = useState(false);
   const [editItem, setEditItem] = useState<GalleryItem | null>(null);
   const [itemTitle, setItemTitle] = useState('');
-  const [itemCat, setItemCat] = useState('');
+  const [itemCats, setItemCats] = useState<string[]>([]);
   const [itemDesc, setItemDesc] = useState('');
   const [itemFile, setItemFile] = useState<File | null>(null);
   const [itemPreview, setItemPreview] = useState<string | null>(null);
@@ -48,7 +48,9 @@ export default function AdminPanel() {
 
   // ── Logo ──
   const logoFileRef = useRef<HTMLInputElement>(null);
+  const processImageRef = useRef<HTMLInputElement>(null);
   const [logoBusy, setLogoBusy] = useState(false);
+  const [processImageBusy, setProcessImageBusy] = useState(false);
 
   // ── Content Form ──
   const [form, setForm] = useState<SiteContent | null>(null);
@@ -58,17 +60,18 @@ export default function AdminPanel() {
 
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const filteredItems = filterCat === 'all' ? items : items.filter(i => i.categoryId === filterCat);
+  const getItemCategoryIds = (item: GalleryItem) => item.categoryIds?.length ? item.categoryIds : [item.categoryId];
+  const filteredItems = filterCat === 'all' ? items : items.filter(i => getItemCategoryIds(i).includes(filterCat));
 
   // ════════ ITEMS ════════
   const resetItemForm = () => {
-    setEditItem(null); setItemTitle(''); setItemCat(''); setItemDesc('');
+    setEditItem(null); setItemTitle(''); setItemCats([]); setItemDesc('');
     setItemFile(null); setItemPreview(null); setItemErr('');
     if (fileRef.current) fileRef.current.value = '';
   };
   const openNewItem = () => { resetItemForm(); setShowItemForm(true); };
   const openEditItem = (item: GalleryItem) => {
-    setEditItem(item); setItemTitle(item.title); setItemCat(item.categoryId);
+    setEditItem(item); setItemTitle(item.title); setItemCats(getItemCategoryIds(item));
     setItemDesc(item.description); setItemFile(null);
     setItemPreview(item.imageUrl ? `${apiBase}${item.imageUrl}` : null);
     setItemErr(''); setShowItemForm(true);
@@ -80,10 +83,15 @@ export default function AdminPanel() {
   };
   const handleItemSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (itemCats.length === 0) {
+      setItemErr('حداقل یک دسته‌بندی انتخاب کنید');
+      return;
+    }
     setItemErr(''); setItemLoading(true);
     const fd = new FormData();
     fd.append('title', itemTitle);
-    fd.append('categoryId', itemCat);
+    fd.append('categoryId', itemCats[0] || '');
+    fd.append('categoryIds', JSON.stringify(itemCats));
     fd.append('description', itemDesc);
     if (itemFile) fd.append('image', itemFile);
     const url = editItem ? `${API}/api/admin/items/${editItem.id}` : `${API}/api/admin/items`;
@@ -95,6 +103,10 @@ export default function AdminPanel() {
       refresh(); setShowItemForm(false); resetItemForm();
     } catch { setItemErr('خطای شبکه'); }
     setItemLoading(false);
+  };
+  const toggleItemCat = (id: string) => {
+    setItemCats(selected =>
+      selected.includes(id) ? selected.filter(catId => catId !== id) : [...selected, id]);
   };
   const handleDeleteItem = async (id: string) => {
     const res = await fetch(`${API}/api/admin/items/${id}`, { method: 'DELETE', headers: authHeaders });
@@ -199,6 +211,40 @@ export default function AdminPanel() {
     setLogoBusy(false);
   };
 
+  const handleProcessImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setProcessImageBusy(true);
+    const fd = new FormData();
+    fd.append('image', file);
+    try {
+      const res = await fetch(`${API}/api/admin/content/process-image`, { method: 'POST', headers: authHeaders, body: fd });
+      if (res.ok) {
+        const next = await res.json();
+        setForm(f => f
+          ? { ...f, process: { ...f.process, imageUrl: next.process.imageUrl } }
+          : structuredClone(next));
+        refresh();
+      }
+    } catch { /* ignore */ }
+    setProcessImageBusy(false);
+    if (processImageRef.current) processImageRef.current.value = '';
+  };
+  const handleProcessImageRemove = async () => {
+    setProcessImageBusy(true);
+    try {
+      const res = await fetch(`${API}/api/admin/content/process-image`, { method: 'DELETE', headers: authHeaders });
+      if (res.ok) {
+        const next = await res.json();
+        setForm(f => f
+          ? { ...f, process: { ...f.process, imageUrl: next.process.imageUrl } }
+          : structuredClone(next));
+        refresh();
+      }
+    } catch { /* ignore */ }
+    setProcessImageBusy(false);
+  };
+
   // ════════ CONTENT ════════
   const saveContent = async () => {
     if (!form) return;
@@ -218,13 +264,6 @@ export default function AdminPanel() {
   // Helpers to update nested form fields immutably.
   const setF = (section: keyof SiteContent, key: string, value: string | boolean) =>
     setForm(f => f ? { ...f, [section]: { ...(f[section] as any), [key]: value } } : f);
-  const setStep = (i: number, key: string, value: string) =>
-    setForm(f => {
-      if (!f) return f;
-      const steps = f.process.steps.map((s, idx) => idx === i ? { ...s, [key]: value } : s);
-      return { ...f, process: { ...f.process, steps } };
-    });
-
   return (
     <div className="admin-layout">
       {/* ── Sidebar ── */}
@@ -316,7 +355,7 @@ export default function AdminPanel() {
                   className={`acat-btn${filterCat === c.id ? ' on' : ''}`}
                   onClick={() => setFilterCat(c.id)}
                 >
-                  {c.label} ({items.filter(i => i.categoryId === c.id).length})
+                  {c.label} ({items.filter(i => getItemCategoryIds(i).includes(c.id)).length})
                 </button>
               ))}
             </div>
@@ -341,7 +380,9 @@ export default function AdminPanel() {
                     </div>
                     <div className="item-info">
                       <div className="item-cat-badge">
-                        {categories.find(c => c.id === item.categoryId)?.label || item.categoryId}
+                        {getItemCategoryIds(item)
+                          .map(id => categories.find(c => c.id === id)?.label || id)
+                          .join('، ')}
                       </div>
                       <div className="item-title">{item.title}</div>
                       {item.description && <p className="item-desc">{item.description}</p>}
@@ -366,7 +407,7 @@ export default function AdminPanel() {
             </div>
             <div className="cat-list">
               {categories.map(c => {
-                const count = items.filter(i => i.categoryId === c.id).length;
+                const count = items.filter(i => getItemCategoryIds(i).includes(c.id)).length;
                 return (
                   <div key={c.id} className="cat-row">
                     <div className="cat-row-info">
@@ -450,6 +491,25 @@ export default function AdminPanel() {
             {/* Process */}
             <div className="content-card">
               <h3>بخش فرآیند کار</h3>
+              <div className="process-admin-media">
+                <div className="process-admin-preview">
+                  {form.process.imageUrl
+                    ? <img src={`${apiBase}${form.process.imageUrl}`} alt="تصویر فعلی بخش فرآیند" />
+                    : <span>تصویر بخش فرآیند</span>}
+                </div>
+                <div className="logo-actions">
+                  <button type="button" className="btn-save" disabled={processImageBusy} onClick={() => processImageRef.current?.click()}>
+                    {processImageBusy ? 'در حال آپلود...' : form.process.imageUrl ? 'تغییر تصویر' : 'آپلود تصویر'}
+                  </button>
+                  {form.process.imageUrl && (
+                    <button type="button" className="btn-cancel" disabled={processImageBusy} onClick={handleProcessImageRemove}>
+                      حذف تصویر
+                    </button>
+                  )}
+                  <input ref={processImageRef} type="file" accept="image/*" onChange={handleProcessImageUpload} style={{ display: 'none' }} />
+                  <small className="content-hint">این تصویر در سمت چپ بخش فرآیند نمایش داده می‌شود. JPG/PNG/WEBP — حداکثر ۱۰MB.</small>
+                </div>
+              </div>
               <div className="content-grid">
                 <label>عنوان کوچک
                   <input value={form.process.eyebrow} onChange={e => setF('process', 'eyebrow', e.target.value)} />
@@ -457,19 +517,21 @@ export default function AdminPanel() {
                 <label>عنوان اصلی
                   <input value={form.process.title} onChange={e => setF('process', 'title', e.target.value)} />
                 </label>
+                <label>متن دکمه
+                  <input value={form.process.btnText} onChange={e => setF('process', 'btnText', e.target.value)} />
+                </label>
+                <label>لینک دکمه
+                  <input dir="ltr" value={form.process.btnLink} onChange={e => setF('process', 'btnLink', e.target.value)} />
+                </label>
+                <label className="content-wide">متن بخش
+                  <textarea value={form.process.text} onChange={e => setF('process', 'text', e.target.value)} rows={6} />
+                </label>
               </div>
-              {form.process.steps.map((s, i) => (
-                <div key={i} className="content-step">
-                  <label>شماره <input value={s.n} onChange={e => setStep(i, 'n', e.target.value)} /></label>
-                  <label>عنوان مرحله <input value={s.title} onChange={e => setStep(i, 'title', e.target.value)} /></label>
-                  <label>توضیح <input value={s.desc} onChange={e => setStep(i, 'desc', e.target.value)} /></label>
-                </div>
-              ))}
             </div>
 
             {/* CTA */}
             <div className="content-card">
-              <h3>بخش دعوت به اقدام (CTA)</h3>
+              <h3>بخش تماس و رزرو (CTA)</h3>
               <div className="content-grid">
                 <label>عنوان
                   <input value={form.cta.title} onChange={e => setF('cta', 'title', e.target.value)} />
@@ -477,17 +539,20 @@ export default function AdminPanel() {
                 <label>متن
                   <input value={form.cta.text} onChange={e => setF('cta', 'text', e.target.value)} />
                 </label>
-                <label>متن دکمه اول
-                  <input value={form.cta.btnPrimaryText} onChange={e => setF('cta', 'btnPrimaryText', e.target.value)} />
+                <label>شماره تماس اول
+                  <input dir="ltr" value={form.cta.phoneOne} onChange={e => setF('cta', 'phoneOne', e.target.value)} />
                 </label>
-                <label>لینک دکمه اول
-                  <input dir="ltr" value={form.cta.btnPrimaryLink} onChange={e => setF('cta', 'btnPrimaryLink', e.target.value)} />
+                <label>شماره تماس دوم
+                  <input dir="ltr" value={form.cta.phoneTwo} onChange={e => setF('cta', 'phoneTwo', e.target.value)} />
                 </label>
-                <label>متن دکمه دوم
-                  <input value={form.cta.btnSecondaryText} onChange={e => setF('cta', 'btnSecondaryText', e.target.value)} />
+                <label>لینک واتساپ
+                  <input dir="ltr" value={form.cta.whatsappLink} onChange={e => setF('cta', 'whatsappLink', e.target.value)} />
                 </label>
-                <label>لینک دکمه دوم
-                  <input dir="ltr" value={form.cta.btnSecondaryLink} onChange={e => setF('cta', 'btnSecondaryLink', e.target.value)} />
+                <label>لینک اینستاگرام
+                  <input dir="ltr" value={form.cta.instagramLink} onChange={e => setF('cta', 'instagramLink', e.target.value)} />
+                </label>
+                <label className="content-wide">آدرس
+                  <input value={form.cta.address} onChange={e => setF('cta', 'address', e.target.value)} />
                 </label>
               </div>
             </div>
@@ -501,7 +566,7 @@ export default function AdminPanel() {
                   checked={form.quickContact.enabled}
                   onChange={e => setF('quickContact', 'enabled', e.target.checked)}
                 />
-                نمایش آیکن‌های تماس و واتساپ در گوشه صفحه
+                نمایش آیکن‌های تماس، واتساپ و اینستاگرام پایین صفحه
               </label>
               <div className="content-grid">
                 <label>متن نوار
@@ -513,8 +578,11 @@ export default function AdminPanel() {
                 <label>لینک واتساپ
                   <input dir="ltr" value={form.quickContact.whatsappLink} onChange={e => setF('quickContact', 'whatsappLink', e.target.value)} />
                 </label>
+                <label>لینک اینستاگرام
+                  <input dir="ltr" value={form.quickContact.instagramLink} onChange={e => setF('quickContact', 'instagramLink', e.target.value)} />
+                </label>
               </div>
-              <small className="content-hint">برای تماس می‌توانید از tel: یا mailto: استفاده کنید. لینک واتساپ معمولاً با https://wa.me/ شروع می‌شود.</small>
+              <small className="content-hint">برای تماس از tel: و برای واتساپ از https://wa.me/ استفاده کنید. لینک اینستاگرام با https://instagram.com/ شروع می‌شود.</small>
             </div>
 
             {/* Footer */}
@@ -598,15 +666,15 @@ export default function AdminPanel() {
             </div>
             <form onSubmit={handleItemSubmit} className="modal-form">
               <div
-                className="upload-zone"
+                className="upload-zone upload-zone-gallery"
                 onClick={() => fileRef.current?.click()}
                 style={itemPreview ? { backgroundImage: `url(${itemPreview})` } : {}}
               >
                 {!itemPreview && (
                   <>
                     <span className="upload-icon">📸</span>
-                    <p>کلیک کنید یا تصویر را اینجا بکشید</p>
-                    <small>JPG، PNG، WEBP — حداکثر ۱۰MB</small>
+                    <p>تصویر گالری را با هر نسبت دلخواه انتخاب کنید</p>
+                    <small>JPG، PNG، WEBP — حداکثر ۱۰MB. تصویر در سایت با نسبت اصلی خودش نمایش داده می‌شود.</small>
                   </>
                 )}
                 {itemPreview && <div className="upload-overlay">تغییر تصویر</div>}
@@ -616,11 +684,19 @@ export default function AdminPanel() {
               <label>عنوان <span className="req">*</span></label>
               <input value={itemTitle} onChange={e => setItemTitle(e.target.value)} placeholder="عنوان آیتم" required />
 
-              <label>دسته‌بندی <span className="req">*</span></label>
-              <select value={itemCat} onChange={e => setItemCat(e.target.value)} required>
-                <option value="">انتخاب کنید...</option>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-              </select>
+              <label>دسته‌بندی‌ها <span className="req">*</span></label>
+              <div className="multi-cat-box" role="group" aria-label="انتخاب دسته‌بندی‌های آیتم">
+                {categories.map(c => (
+                  <label key={c.id} className="multi-cat-option">
+                    <input
+                      type="checkbox"
+                      checked={itemCats.includes(c.id)}
+                      onChange={() => toggleItemCat(c.id)}
+                    />
+                    <span>{c.label}</span>
+                  </label>
+                ))}
+              </div>
 
               <label>توضیحات</label>
               <textarea value={itemDesc} onChange={e => setItemDesc(e.target.value)} placeholder="توضیح کوتاه (اختیاری)" rows={3} />

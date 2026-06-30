@@ -8,11 +8,4 @@
 .footer-logo { font-size: 1rem; font-weight: 700; color: #c97b6b; }
 .footer-logo span { font-weight: 300; color: #9e7e76; }
 .footer p { font-size: .78rem; color: #9e7e76; }
-.footer-socials { display: flex; gap: .5rem; }
-.soc {
-  width: 32px; height: 32px; border-radius: 50%; background: #f5ddd6; color: #c97b6b;
-  display: flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 700;
-  text-decoration: none; transition: background .2s, transform .2s;
-}
-.soc:hover { background: #e8a598; color: #fff; transform: translateY(-2px); }
 @media (max-width: 768px) { .footer { flex-direction: column; text-align: center; padding: 1.5rem 0; margin-bottom: 6.5rem; } }

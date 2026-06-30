@@ -1,33 +1,32 @@
 import { useData } from '../context/DataContext';
 import './Process.css';
 
-const DEFAULT_STEPS = [
-  { n: '۰۱', title: 'مشاوره رایگان', desc: 'یک جلسه آنلاین یا حضوری برای آشنایی با سلیقه و نیاز شما.' },
-  { n: '۰۲', title: 'برنامه‌ریزی', desc: 'انتخاب لوکیشن، تاریخ و تنظیم جزئیات پروژه با هم.' },
-  { n: '۰۳', title: 'روز عکاسی', desc: 'یک تجربه راحت و صمیمی — فقط خودتان باشید!' },
-  { n: '۰۴', title: 'تحویل آثار', desc: 'ویرایش حرفه‌ای و تحویل فایل‌ها در ۳ تا ۴ هفته.' },
-];
-
 export default function Process() {
-  const { content } = useData();
+  const { content, apiBase } = useData();
   const p = content?.process;
-  const steps = p?.steps?.length ? p.steps : DEFAULT_STEPS;
+  const imageSrc = p?.imageUrl ? `${apiBase}${p.imageUrl}` : null;
 
   return (
     <section id="process" className="process-section">
       <div className="process-inner">
-        <div className="section-head">
-          <span className="section-eyebrow">{p?.eyebrow ?? 'فرآیند کار'}</span>
-          <h2 className="section-title">{p?.title ?? 'چطور باهم کار می‌کنیم؟'}</h2>
+        <div className="process-media">
+          {imageSrc ? (
+            <img src={imageSrc} alt={p?.title || 'فرآیند کار استودیو نور'} loading="lazy" />
+          ) : (
+            <div className="process-placeholder" aria-hidden="true" />
+          )}
         </div>
-        <div className="process-cards">
-          {steps.map(s => (
-            <div key={s.n} className="process-card">
-              <div className="p-num">{s.n}</div>
-              <div className="p-title">{s.title}</div>
-              <p className="p-desc">{s.desc}</p>
-            </div>
-          ))}
+
+        <div className="process-copy">
+          <span className="process-eyebrow">{p?.eyebrow ?? 'فرآیند کار'}</span>
+          <h2>{p?.title ?? 'چرا عکاسی خانوادگی ارزشمند است؟'}</h2>
+          <p>
+            {p?.text ??
+              'تصور کنید چند سال دیگر به عکس‌های خانوادگی نگاه می‌کنید؛ فقط یک تصویر معمولی نمی‌بینید، بلکه دریچه‌ای به خاطرات، عشق و لحظاتی است که تکرار نمی‌شوند.'}
+          </p>
+          <a className="process-btn" href={p?.btnLink || '#cta'}>
+            {p?.btnText || 'ارتباط با ما'}
+          </a>
         </div>
       </div>
     </section>

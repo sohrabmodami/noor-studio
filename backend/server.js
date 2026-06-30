@@ -30,7 +30,11 @@ const DEFAULT_CONTENT = {
   },
   process: {
     eyebrow: 'فرآیند کار',
-    title: 'چطور باهم کار می‌کنیم؟',
+    title: 'چرا عکاسی خانوادگی ارزشمند است؟',
+    text: 'تصور کنید چند سال دیگر به عکس‌های خانوادگی نگاه می‌کنید؛ فقط یک تصویر معمولی نمی‌بینید، بلکه دریچه‌ای به خاطرات، عشق و لحظاتی است که تکرار نمی‌شوند. عکاسی خانوادگی کمک می‌کند این لحظه‌های صمیمی و ارزشمند برای همیشه در حافظه تصویری شما ماندگار شوند.',
+    btnText: 'ارتباط با ما',
+    btnLink: '#cta',
+    imageUrl: null,
     steps: [
       { n: '۰۱', title: 'مشاوره رایگان', desc: 'یک جلسه آنلاین یا حضوری برای آشنایی با سلیقه و نیاز شما.' },
       { n: '۰۲', title: 'برنامه‌ریزی',  desc: 'انتخاب لوکیشن، تاریخ و تنظیم جزئیات پروژه با هم.' },
@@ -40,24 +44,30 @@ const DEFAULT_CONTENT = {
   },
   cta: {
     title: 'آماده‌اید لحظاتتان را جاودان کنید؟',
-    text: 'همین الان رزرو کنید — اولین مشاوره کاملاً رایگان است.',
-    btnPrimaryText: 'ارسال ایمیل',
-    btnPrimaryLink: 'mailto:Maryam.daemii@gmail.com',
-    btnSecondaryText: 'اینستاگرام ما',
-    btnSecondaryLink: 'https://instagram.com',
+    text: 'برای مشاوره رایگان و رزرو با ما در ارتباط باشید.',
+    btnPrimaryText: 'تماس',
+    btnPrimaryLink: 'tel:+989010278986',
+    btnSecondaryText: 'اینستاگرام',
+    btnSecondaryLink: 'https://instagram.com/Noorstudio.gorgan',
+    instagramLink: 'https://instagram.com/Noorstudio.gorgan',
+    whatsappLink: 'https://wa.me/989010278986',
+    phoneOne: '09010278986',
+    phoneTwo: '09111708194',
+    address: 'گرگان، عدالت ۴۷، سرنبش میربهبهانی ۱، مجتمع مادر، طبقه ۵',
   },
   quickContact: {
     enabled: true,
-    text: 'برای رزرو و مشاوره رایگان در تماس باشید',
-    phoneLink: 'mailto:Maryam.daemii@gmail.com',
-    whatsappLink: '#',
+    text: 'برای مشاوره رایگان و رزرو با ما در ارتباط باشید',
+    phoneLink: 'tel:+989010278986',
+    whatsappLink: 'https://wa.me/989010278986',
+    instagramLink: 'https://instagram.com/Noorstudio.gorgan',
   },
   footer: {
     brand: 'نور استودیو',
     copyright: '© ۱۴۰۵ — تمامی حقوق محفوظ است',
-    instagram: '#',
+    instagram: 'https://instagram.com/Noorstudio.gorgan',
     telegram: '#',
-    whatsapp: '#',
+    whatsapp: 'https://wa.me/989010278986',
   },
 };
 
@@ -125,6 +135,32 @@ function deleteUpload(imageUrl) {
   if (fs.existsSync(p)) fs.unlinkSync(p);
 }
 
+function parseCategoryIds(input) {
+  if (Array.isArray(input)) return input.map(String).filter(Boolean);
+  if (typeof input === 'string') {
+    try {
+      const parsed = JSON.parse(input);
+      if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
+    } catch {
+      return input.split(',').map(s => s.trim()).filter(Boolean);
+    }
+  }
+  return [];
+}
+
+function normalizeItem(row) {
+  if (!row) return row;
+  const categoryIds = parseCategoryIds(row.categoryIds);
+  return {
+    ...row,
+    categoryIds: categoryIds.length ? categoryIds : [row.categoryId].filter(Boolean),
+  };
+}
+
+function itemHasCategory(item, categoryId) {
+  return normalizeItem(item).categoryIds.includes(categoryId);
+}
+
 // ── Auth Middleware ──
 function authMiddleware(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
@@ -144,10 +180,8 @@ function authMiddleware(req, res, next) {
 // GET all items (with optional category filter)
 app.get('/api/items', (req, res) => {
   const { category } = req.query;
-  const items = category && category !== 'all'
-    ? db.prepare('SELECT * FROM items WHERE categoryId = ? ORDER BY createdAt DESC').all(category)
-    : db.prepare('SELECT * FROM items ORDER BY createdAt DESC').all();
-  res.json(items);
+  const items = db.prepare('SELECT * FROM items ORDER BY createdAt DESC').all().map(normalizeItem);
+  res.json(category && category !== 'all' ? items.filter(i => itemHasCategory(i, category)) : items);
 });
 
 // GET all categories
@@ -295,55 +329,84 @@ app.put('/api/admin/content', authMiddleware, (req, res) => {
   res.json(merged);
 });
 
+app.post('/api/admin/content/process-image', authMiddleware, upload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'فایلی ارسال نشد' });
+  let saved = null;
+  try { saved = JSON.parse(getSetting('content') || 'null'); } catch { saved = null; }
+  const merged = mergeContent(saved);
+  if (merged.process.imageUrl) deleteUpload(merged.process.imageUrl);
+  merged.process = { ...merged.process, imageUrl: `/uploads/${req.file.filename}` };
+  setSetting('content', JSON.stringify(merged));
+  res.json(merged);
+});
+
+app.delete('/api/admin/content/process-image', authMiddleware, (req, res) => {
+  let saved = null;
+  try { saved = JSON.parse(getSetting('content') || 'null'); } catch { saved = null; }
+  const merged = mergeContent(saved);
+  deleteUpload(merged.process.imageUrl);
+  merged.process = { ...merged.process, imageUrl: null };
+  setSetting('content', JSON.stringify(merged));
+  res.json(merged);
+});
+
 // ══════════════════════════════════════
 //  ADMIN — ITEMS
 // ══════════════════════════════════════
 
 app.get('/api/admin/items', authMiddleware, (req, res) => {
-  res.json(db.prepare('SELECT * FROM items ORDER BY createdAt DESC').all());
+  res.json(db.prepare('SELECT * FROM items ORDER BY createdAt DESC').all().map(normalizeItem));
 });
 
 app.post('/api/admin/items', authMiddleware, upload.single('image'), (req, res) => {
-  const { title, categoryId, description } = req.body;
-  if (!title || !categoryId) {
+  const { title, categoryId, categoryIds, description } = req.body;
+  const selectedCategoryIds = parseCategoryIds(categoryIds);
+  const finalCategoryIds = selectedCategoryIds.length ? selectedCategoryIds : [categoryId].filter(Boolean);
+  if (!title || finalCategoryIds.length === 0) {
     return res.status(400).json({ error: 'عنوان و دسته‌بندی الزامی است' });
   }
-  const cat = db.prepare('SELECT id FROM categories WHERE id = ?').get(categoryId);
-  if (!cat) return res.status(400).json({ error: 'دسته‌بندی وجود ندارد' });
+  const missing = finalCategoryIds.find(id => !db.prepare('SELECT id FROM categories WHERE id = ?').get(id));
+  if (missing) return res.status(400).json({ error: 'دسته‌بندی وجود ندارد' });
 
   const newItem = {
     id: randomUUID(),
     title,
-    categoryId,
+    categoryId: finalCategoryIds[0],
+    categoryIds: JSON.stringify(finalCategoryIds),
     description: description || '',
     imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
     createdAt: new Date().toISOString(),
     updatedAt: null,
   };
-  db.prepare(`INSERT INTO items (id, title, categoryId, description, imageUrl, createdAt, updatedAt)
-    VALUES (@id, @title, @categoryId, @description, @imageUrl, @createdAt, @updatedAt)`).run(newItem);
-  res.status(201).json(newItem);
+  db.prepare(`INSERT INTO items (id, title, categoryId, categoryIds, description, imageUrl, createdAt, updatedAt)
+    VALUES (@id, @title, @categoryId, @categoryIds, @description, @imageUrl, @createdAt, @updatedAt)`).run(newItem);
+  res.status(201).json(normalizeItem(newItem));
 });
 
 app.put('/api/admin/items/:id', authMiddleware, upload.single('image'), (req, res) => {
   const oldItem = db.prepare('SELECT * FROM items WHERE id = ?').get(req.params.id);
   if (!oldItem) return res.status(404).json({ error: 'آیتم یافت نشد' });
 
-  const { title, categoryId, description } = req.body;
+  const { title, categoryId, categoryIds, description } = req.body;
+  const selectedCategoryIds = parseCategoryIds(categoryIds);
+  const finalCategoryIds = selectedCategoryIds.length ? selectedCategoryIds : (categoryId ? [categoryId] : normalizeItem(oldItem).categoryIds);
+  const missing = finalCategoryIds.find(id => !db.prepare('SELECT id FROM categories WHERE id = ?').get(id));
+  if (missing) return res.status(400).json({ error: 'دسته‌بندی وجود ندارد' });
   if (req.file && oldItem.imageUrl) deleteUpload(oldItem.imageUrl);
 
   const updated = {
     id: oldItem.id,
     title: title || oldItem.title,
-    categoryId: categoryId || oldItem.categoryId,
+    categoryId: finalCategoryIds[0],
+    categoryIds: JSON.stringify(finalCategoryIds),
     description: description !== undefined ? description : oldItem.description,
     imageUrl: req.file ? `/uploads/${req.file.filename}` : oldItem.imageUrl,
     updatedAt: new Date().toISOString(),
   };
-  db.prepare(`UPDATE items SET title = @title, categoryId = @categoryId,
+  db.prepare(`UPDATE items SET title = @title, categoryId = @categoryId, categoryIds = @categoryIds,
     description = @description, imageUrl = @imageUrl, updatedAt = @updatedAt
     WHERE id = @id`).run(updated);
-  res.json(db.prepare('SELECT * FROM items WHERE id = ?').get(oldItem.id));
+  res.json(normalizeItem(db.prepare('SELECT * FROM items WHERE id = ?').get(oldItem.id)));
 });
 
 app.delete('/api/admin/items/:id', authMiddleware, (req, res) => {
@@ -368,7 +431,7 @@ app.post('/api/admin/categories', authMiddleware, (req, res) => {
 });
 
 app.delete('/api/admin/categories/:id', authMiddleware, (req, res) => {
-  const hasItems = db.prepare('SELECT 1 FROM items WHERE categoryId = ? LIMIT 1').get(req.params.id);
+  const hasItems = db.prepare('SELECT * FROM items').all().some(item => itemHasCategory(item, req.params.id));
   if (hasItems) return res.status(400).json({ error: 'این دسته‌بندی دارای آیتم است' });
   db.prepare('DELETE FROM categories WHERE id = ?').run(req.params.id);
   res.json({ message: 'دسته‌بندی حذف شد' });

@@ -107,7 +107,7 @@ export default function Header() {
         </ul>
 
         <div className="nav-right">
-          <button className="nav-cta" onClick={() => handleNav('cta')}>رزرو رایگان</button>
+          <button className="nav-cta" onClick={() => handleNav('cta')}>رزرو و مشاوره</button>
           <button
             className={`hamburger${menuOpen ? ' open' : ''}`}
             onClick={() => setMenuOpen(o => !o)}
@@ -133,7 +133,7 @@ export default function Header() {
               <span className="drawer-label">{sec.label}</span>
             </button>
           ))}
-          <button className="drawer-cta" onClick={() => handleNav('cta')}>رزرو رایگان</button>
+          <button className="drawer-cta" onClick={() => handleNav('cta')}>رزرو و مشاوره</button>
         </div>
       </div>
 

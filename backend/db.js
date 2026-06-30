@@ -25,6 +25,7 @@ db.exec(`
     id          TEXT PRIMARY KEY,
     title       TEXT NOT NULL,
     categoryId  TEXT NOT NULL,
+    categoryIds TEXT,
     description TEXT DEFAULT '',
     imageUrl    TEXT,
     createdAt   TEXT,
@@ -49,6 +50,17 @@ const slideCols = db.prepare('PRAGMA table_info(slides)').all().map(c => c.name)
 if (!slideCols.includes('title'))    db.exec('ALTER TABLE slides ADD COLUMN title TEXT');
 if (!slideCols.includes('subtitle')) db.exec('ALTER TABLE slides ADD COLUMN subtitle TEXT');
 
+// ── Lightweight migration for gallery multi-category support ──
+const itemCols = db.prepare('PRAGMA table_info(items)').all().map(c => c.name);
+if (!itemCols.includes('categoryIds')) {
+  db.exec('ALTER TABLE items ADD COLUMN categoryIds TEXT');
+}
+db.prepare("SELECT id, categoryId FROM items WHERE categoryIds IS NULL OR categoryIds = ''").all()
+  .forEach(item => {
+    db.prepare('UPDATE items SET categoryIds = ? WHERE id = ?')
+      .run(JSON.stringify([item.categoryId].filter(Boolean)), item.id);
+  });
+
 // ── Seed / migrate on first run ──
 function isEmpty() {
   const c = db.prepare('SELECT COUNT(*) AS n FROM categories').get().n;
@@ -64,12 +76,17 @@ function migrateFromJson() {
       const tx = db.transaction((data) => {
         (data.categories || []).forEach(c =>
           db.prepare('INSERT OR IGNORE INTO categories (id, label) VALUES (?, ?)').run(c.id, c.label));
-        (data.items || []).forEach(i =>
+        (data.items || []).forEach(i => {
+          const categoryIds = Array.isArray(i.categoryIds) && i.categoryIds.length
+            ? i.categoryIds
+            : [i.categoryId].filter(Boolean);
           db.prepare(`INSERT OR IGNORE INTO items
-            (id, title, categoryId, description, imageUrl, createdAt, updatedAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`).run(
-            i.id, i.title, i.categoryId, i.description || '', i.imageUrl || null,
-            i.createdAt || new Date().toISOString(), i.updatedAt || null));
+            (id, title, categoryId, categoryIds, description, imageUrl, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(
+            i.id, i.title, categoryIds[0] || i.categoryId, JSON.stringify(categoryIds),
+            i.description || '', i.imageUrl || null,
+            i.createdAt || new Date().toISOString(), i.updatedAt || null);
+        });
         (data.slides || []).forEach(s =>
           db.prepare('INSERT OR IGNORE INTO slides (id, tag, imageUrl, "order") VALUES (?, ?, ?, ?)')
             .run(s.id, s.tag, s.imageUrl || null, s.order || 0));

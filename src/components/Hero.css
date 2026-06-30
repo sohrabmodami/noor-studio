@@ -1,5 +1,5 @@
 .hero {
-  padding: 0 0 2rem;
+  padding: 0;
   background: linear-gradient(180deg,#fdf8f5 0%,#fceee8 100%);
   width: 100%;
 }
@@ -173,18 +173,24 @@
 @media (max-width: 900px) {
   .hero { padding-inline: 0; }
   .hero-slider { border-radius: 0; }
+  .slider-track {
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 21 / 16;
+  }
   .slide-content {
     right: 1.5rem;
-    bottom: 4.6rem;
+    bottom: 3.8rem;
     width: calc(100% - 3rem);
   }
 }
 
 @media (max-width: 640px) {
-  .hero { padding: 0 0 1.5rem; }
+  .hero { padding: 0; }
   .slider-track {
-    height: 72vh;
-    min-height: 480px;
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 21 / 16;
   }
   .hero-slider::before {
     height: 110px;
@@ -192,7 +198,7 @@
   }
   .slide-content {
     right: 1rem;
-    bottom: 3.6rem;
+    bottom: 2.8rem;
     width: calc(100% - 2rem);
     max-width: 330px;
   }

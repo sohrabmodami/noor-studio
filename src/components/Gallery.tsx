@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import './Gallery.css';
 
@@ -14,11 +14,47 @@ const BG_COLORS = [
 export default function Gallery() {
   const { categories, items, loading, apiBase } = useData();
   const [active, setActive] = useState('all');
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const getCategoryIds = (item: { categoryId: string; categoryIds?: string[] }) =>
+    item.categoryIds?.length ? item.categoryIds : [item.categoryId];
 
   const filtered = useMemo(() =>
-    active === 'all' ? items : items.filter(i => i.categoryId === active),
+    active === 'all' ? items : items.filter(i => getCategoryIds(i).includes(active)),
     [items, active]
   );
+
+  const lightboxItem = lightboxIndex === null ? null : filtered[lightboxIndex] || null;
+  const categoryLabel = (categoryId: string) =>
+    categories.find(c => c.id === categoryId)?.label || categoryId;
+  const categoryLabels = (item: { categoryId: string; categoryIds?: string[] }) =>
+    getCategoryIds(item).map(categoryLabel).join('، ');
+  const closeLightbox = () => setLightboxIndex(null);
+  const goLightbox = (dir: number) => {
+    if (filtered.length === 0) return;
+    setLightboxIndex(i => {
+      const current = i ?? 0;
+      return (current + dir + filtered.length) % filtered.length;
+    });
+  };
+
+  useEffect(() => {
+    setLightboxIndex(null);
+  }, [active]);
+
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeLightbox();
+      if (event.key === 'ArrowLeft') goLightbox(1);
+      if (event.key === 'ArrowRight') goLightbox(-1);
+    };
+    window.addEventListener('keydown', onKey);
+    document.body.classList.add('gallery-lock');
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.classList.remove('gallery-lock');
+    };
+  }, [lightboxIndex, filtered.length]);
 
   return (
     <section id="gallery" className="gallery-section">
@@ -54,24 +90,44 @@ export default function Gallery() {
       ) : (
         <div className="card-grid">
           {filtered.map((item, i) => (
-            <div key={item.id} className="card-item">
-              <div
-                className="card-bg"
-                style={
-                  item.imageUrl
-                    ? { backgroundImage: `url(${apiBase}${item.imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                    : { background: BG_COLORS[i % BG_COLORS.length] }
-                }
-              />
+            <button
+              key={item.id}
+              type="button"
+              className="card-item"
+              onClick={() => setLightboxIndex(i)}
+              aria-label={`مشاهده تصویر ${item.title}`}
+            >
+              {item.imageUrl ? (
+                <img className="card-image" src={`${apiBase}${item.imageUrl}`} alt="" loading="lazy" />
+              ) : (
+                <div className="card-fallback" style={{ background: BG_COLORS[i % BG_COLORS.length] }} />
+              )}
               <div className="card-overlay">
                 <span className="card-cat">
-                  {categories.find(c => c.id === item.categoryId)?.label || item.categoryId}
+                  {categoryLabels(item)}
                 </span>
-                <span className="card-name">{item.title}</span>
-                {item.description && <p className="card-desc">{item.description}</p>}
               </div>
-            </div>
+            </button>
           ))}
+        </div>
+      )}
+
+      {lightboxItem && (
+        <div className="gallery-lightbox" role="dialog" aria-modal="true" aria-label="نمایش تصویر گالری">
+          <button className="lightbox-backdrop" type="button" onClick={closeLightbox} aria-label="بستن" />
+          <div className="lightbox-panel">
+            <button className="lightbox-close" type="button" onClick={closeLightbox} aria-label="بستن">×</button>
+            <button className="lightbox-nav lightbox-prev" type="button" onClick={() => goLightbox(-1)} aria-label="تصویر قبلی">‹</button>
+            <figure className="lightbox-figure">
+              {lightboxItem.imageUrl ? (
+                <img src={`${apiBase}${lightboxItem.imageUrl}`} alt={lightboxItem.title} />
+              ) : (
+                <div className="lightbox-fallback" style={{ background: BG_COLORS[(lightboxIndex ?? 0) % BG_COLORS.length] }} />
+              )}
+              <figcaption>{categoryLabels(lightboxItem)}</figcaption>
+            </figure>
+            <button className="lightbox-nav lightbox-next" type="button" onClick={() => goLightbox(1)} aria-label="تصویر بعدی">›</button>
+          </div>
         </div>
       )}
     </section>

@@ -11,6 +11,7 @@ export interface GalleryItem {
   id: string;
   title: string;
   categoryId: string;
+  categoryIds?: string[];
   description: string;
   imageUrl: string | null;
   createdAt: string;
@@ -36,7 +37,11 @@ export interface SiteContent {
   process: {
     eyebrow: string;
     title: string;
-    steps: { n: string; title: string; desc: string }[];
+    text: string;
+    btnText: string;
+    btnLink: string;
+    imageUrl: string | null;
+    steps?: { n: string; title: string; desc: string }[];
   };
   cta: {
     title: string;
@@ -45,12 +50,18 @@ export interface SiteContent {
     btnPrimaryLink: string;
     btnSecondaryText: string;
     btnSecondaryLink: string;
+    instagramLink: string;
+    whatsappLink: string;
+    phoneOne: string;
+    phoneTwo: string;
+    address: string;
   };
   quickContact: {
     enabled: boolean;
     text: string;
     phoneLink: string;
     whatsappLink: string;
+    instagramLink: string;
   };
   footer: {
     brand: string;
