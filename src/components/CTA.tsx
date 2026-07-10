@@ -45,14 +45,14 @@ export default function CTA() {
             <a className="cta-contact-card" href={telHref(phoneOne)} aria-label={`تماس مستقیم با ${phoneOne}`}>
               <span className="cta-icon"><FaPhoneAlt aria-hidden="true" /></span>
               <span>
-                <small>شماره اصلی</small>
+                <small>مریم دائمی</small>
                 <strong>{phoneOne}</strong>
               </span>
             </a>
             <a className="cta-contact-card" href={telHref(phoneTwo)} aria-label={`تماس با ${phoneTwo}`}>
               <span className="cta-icon"><FaPhoneAlt aria-hidden="true" /></span>
               <span>
-                <small>شماره دوم</small>
+                <small>آیسن مومنی</small>
                 <strong>{phoneTwo}</strong>
               </span>
             </a>

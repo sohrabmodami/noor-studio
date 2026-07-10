@@ -8,10 +8,10 @@ const API = import.meta.env.VITE_API_URL || '';
 type Tab = 'slides' | 'items' | 'categories' | 'content';
 
 export default function AdminPanel() {
-  const { token, username, logout } = useAuth();
+  const { token, username, logout, handleAuthError } = useAuth();
   const { categories, items, slides, content, logoUrl, loading, refresh, apiBase } = useData();
   const [tab, setTab] = useState<Tab>('slides');
-  const [filterCat, setFilterCat] = useState('all');
+  const [filterCats, setFilterCats] = useState<string[]>([]);
 
   const authHeaders = { Authorization: `Bearer ${token}` };
 
@@ -25,6 +25,7 @@ export default function AdminPanel() {
   const [itemPreview, setItemPreview] = useState<string | null>(null);
   const [itemLoading, setItemLoading] = useState(false);
   const [itemErr, setItemErr] = useState('');
+  const [itemCatSearch, setItemCatSearch] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   // ── Slide Form ──
@@ -61,12 +62,22 @@ export default function AdminPanel() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const getItemCategoryIds = (item: GalleryItem) => item.categoryIds?.length ? item.categoryIds : [item.categoryId];
-  const filteredItems = filterCat === 'all' ? items : items.filter(i => getItemCategoryIds(i).includes(filterCat));
+  const filteredItems = filterCats.length === 0
+    ? items
+    : items.filter(i => getItemCategoryIds(i).some(id => filterCats.includes(id)));
+  const toggleFilterCat = (id: string) => {
+    setFilterCats(selected =>
+      selected.includes(id) ? selected.filter(catId => catId !== id) : [...selected, id]);
+  };
+  const visibleItemCategories = categories.filter(c => {
+    const q = itemCatSearch.trim().toLowerCase();
+    return !q || c.label.toLowerCase().includes(q) || c.id.toLowerCase().includes(q);
+  });
 
   // ════════ ITEMS ════════
   const resetItemForm = () => {
     setEditItem(null); setItemTitle(''); setItemCats([]); setItemDesc('');
-    setItemFile(null); setItemPreview(null); setItemErr('');
+    setItemFile(null); setItemPreview(null); setItemErr(''); setItemCatSearch('');
     if (fileRef.current) fileRef.current.value = '';
   };
   const openNewItem = () => { resetItemForm(); setShowItemForm(true); };
@@ -74,7 +85,7 @@ export default function AdminPanel() {
     setEditItem(item); setItemTitle(item.title); setItemCats(getItemCategoryIds(item));
     setItemDesc(item.description); setItemFile(null);
     setItemPreview(item.imageUrl ? `${apiBase}${item.imageUrl}` : null);
-    setItemErr(''); setShowItemForm(true);
+    setItemErr(''); setItemCatSearch(''); setShowItemForm(true);
   };
   const handleItemFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
@@ -98,6 +109,7 @@ export default function AdminPanel() {
     const method = editItem ? 'PUT' : 'POST';
     try {
       const res = await fetch(url, { method, headers: authHeaders, body: fd });
+      if (handleAuthError(res.status)) return;
       const data = await res.json();
       if (!res.ok) { setItemErr(data.error || 'خطا'); setItemLoading(false); return; }
       refresh(); setShowItemForm(false); resetItemForm();
@@ -110,7 +122,9 @@ export default function AdminPanel() {
   };
   const handleDeleteItem = async (id: string) => {
     const res = await fetch(`${API}/api/admin/items/${id}`, { method: 'DELETE', headers: authHeaders });
+    if (handleAuthError(res.status)) { setDeleteConfirm(null); return; }
     if (res.ok) { refresh(); setDeleteConfirm(null); }
+    else { alert('حذف انجام نشد. دوباره تلاش کنید.'); }
   };
 
   // ════════ SLIDES ════════
@@ -143,6 +157,7 @@ export default function AdminPanel() {
     const method = editSlide ? 'PUT' : 'POST';
     try {
       const res = await fetch(url, { method, headers: authHeaders, body: fd });
+      if (handleAuthError(res.status)) return;
       const data = await res.json();
       if (!res.ok) { setSlideErr(data.error || 'خطا'); setSlideLoading(false); return; }
       refresh(); setShowSlideForm(false); resetSlideForm();
@@ -151,7 +166,9 @@ export default function AdminPanel() {
   };
   const handleDeleteSlide = async (id: string) => {
     const res = await fetch(`${API}/api/admin/slides/${id}`, { method: 'DELETE', headers: authHeaders });
+    if (handleAuthError(res.status)) { setDeleteConfirm(null); return; }
     if (res.ok) { refresh(); setDeleteConfirm(null); }
+    else { alert('حذف انجام نشد. دوباره تلاش کنید.'); }
   };
   const moveSlide = async (index: number, dir: -1 | 1) => {
     const target = index + dir;
@@ -175,6 +192,7 @@ export default function AdminPanel() {
         headers: { ...authHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: catId.trim().toLowerCase().replace(/\s+/g, '_'), label: catLabel })
       });
+      if (handleAuthError(res.status)) return;
       const data = await res.json();
       if (!res.ok) { setCatErr(data.error || 'خطا'); setCatLoading(false); return; }
       refresh(); setShowCatForm(false); setCatId(''); setCatLabel('');
@@ -183,6 +201,7 @@ export default function AdminPanel() {
   };
   const handleDeleteCat = async (id: string) => {
     const res = await fetch(`${API}/api/admin/categories/${id}`, { method: 'DELETE', headers: authHeaders });
+    if (handleAuthError(res.status)) { setDeleteConfirm(null); return; }
     const data = await res.json();
     if (!res.ok) { alert(data.error); return; }
     refresh(); setDeleteConfirm(null);
@@ -255,6 +274,7 @@ export default function AdminPanel() {
         headers: { ...authHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
+      if (handleAuthError(res.status)) return;
       if (!res.ok) { setContentMsg('خطا در ذخیره'); }
       else { refresh(); setContentMsg('✓ ذخیره شد'); }
     } catch { setContentMsg('خطای شبکه'); }
@@ -346,14 +366,15 @@ export default function AdminPanel() {
               <button className="btn-add" onClick={openNewItem}>+ افزودن آیتم</button>
             </div>
             <div className="admin-filter-bar">
-              <button className={`acat-btn${filterCat === 'all' ? ' on' : ''}`} onClick={() => setFilterCat('all')}>
+              <button className={`acat-btn${filterCats.length === 0 ? ' on' : ''}`} onClick={() => setFilterCats([])}>
                 همه ({items.length})
               </button>
               {categories.map(c => (
                 <button
                   key={c.id}
-                  className={`acat-btn${filterCat === c.id ? ' on' : ''}`}
-                  onClick={() => setFilterCat(c.id)}
+                  className={`acat-btn${filterCats.includes(c.id) ? ' on' : ''}`}
+                  onClick={() => toggleFilterCat(c.id)}
+                  aria-pressed={filterCats.includes(c.id)}
                 >
                   {c.label} ({items.filter(i => getItemCategoryIds(i).includes(c.id)).length})
                 </button>
@@ -686,7 +707,13 @@ export default function AdminPanel() {
 
               <label>دسته‌بندی‌ها <span className="req">*</span></label>
               <div className="multi-cat-box" role="group" aria-label="انتخاب دسته‌بندی‌های آیتم">
-                {categories.map(c => (
+                <input
+                  className="multi-cat-search"
+                  value={itemCatSearch}
+                  onChange={e => setItemCatSearch(e.target.value)}
+                  placeholder="جستجوی دسته‌بندی..."
+                />
+                {visibleItemCategories.map(c => (
                   <label key={c.id} className="multi-cat-option">
                     <input
                       type="checkbox"
@@ -696,6 +723,9 @@ export default function AdminPanel() {
                     <span>{c.label}</span>
                   </label>
                 ))}
+                {visibleItemCategories.length === 0 && (
+                  <div className="multi-cat-empty">دسته‌بندی پیدا نشد</div>
+                )}
               </div>
 
               <label>توضیحات</label>

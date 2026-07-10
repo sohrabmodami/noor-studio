@@ -13,14 +13,16 @@ const BG_COLORS = [
 
 export default function Gallery() {
   const { categories, items, loading, apiBase } = useData();
-  const [active, setActive] = useState('all');
+  const [activeCategories, setActiveCategories] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const getCategoryIds = (item: { categoryId: string; categoryIds?: string[] }) =>
     item.categoryIds?.length ? item.categoryIds : [item.categoryId];
 
   const filtered = useMemo(() =>
-    active === 'all' ? items : items.filter(i => getCategoryIds(i).includes(active)),
-    [items, active]
+    activeCategories.length === 0
+      ? items
+      : items.filter(i => getCategoryIds(i).some(id => activeCategories.includes(id))),
+    [items, activeCategories]
   );
 
   const lightboxItem = lightboxIndex === null ? null : filtered[lightboxIndex] || null;
@@ -28,6 +30,13 @@ export default function Gallery() {
     categories.find(c => c.id === categoryId)?.label || categoryId;
   const categoryLabels = (item: { categoryId: string; categoryIds?: string[] }) =>
     getCategoryIds(item).map(categoryLabel).join('، ');
+  const toggleCategory = (categoryId: string) => {
+    setActiveCategories(selected =>
+      selected.includes(categoryId)
+        ? selected.filter(id => id !== categoryId)
+        : [...selected, categoryId]
+    );
+  };
   const closeLightbox = () => setLightboxIndex(null);
   const goLightbox = (dir: number) => {
     if (filtered.length === 0) return;
@@ -39,7 +48,7 @@ export default function Gallery() {
 
   useEffect(() => {
     setLightboxIndex(null);
-  }, [active]);
+  }, [activeCategories]);
 
   useEffect(() => {
     if (lightboxIndex === null) return;
@@ -65,14 +74,15 @@ export default function Gallery() {
         </div>
         <div className="cat-bar">
           <button
-            className={`cat-btn${active === 'all' ? ' active' : ''}`}
-            onClick={() => setActive('all')}
+            className={`cat-btn${activeCategories.length === 0 ? ' active' : ''}`}
+            onClick={() => setActiveCategories([])}
           >همه</button>
           {categories.map(c => (
             <button
               key={c.id}
-              className={`cat-btn${active === c.id ? ' active' : ''}`}
-              onClick={() => setActive(c.id)}
+              className={`cat-btn${activeCategories.includes(c.id) ? ' active' : ''}`}
+              onClick={() => toggleCategory(c.id)}
+              aria-pressed={activeCategories.includes(c.id)}
             >{c.label}</button>
           ))}
         </div>

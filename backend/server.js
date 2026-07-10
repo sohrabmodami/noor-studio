@@ -181,7 +181,8 @@ function authMiddleware(req, res, next) {
 app.get('/api/items', (req, res) => {
   const { category } = req.query;
   const items = db.prepare('SELECT * FROM items ORDER BY createdAt DESC').all().map(normalizeItem);
-  res.json(category && category !== 'all' ? items.filter(i => itemHasCategory(i, category)) : items);
+  const categoryIds = parseCategoryIds(category);
+  res.json(categoryIds.length ? items.filter(i => categoryIds.some(id => itemHasCategory(i, id))) : items);
 });
 
 // GET all categories

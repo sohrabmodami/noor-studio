@@ -198,6 +198,12 @@
   border-radius: 12px;
   background: #fdf8f5;
 }
+.modal-form .multi-cat-search {
+  flex: 1 0 100%;
+  min-height: 42px;
+  margin-bottom: .15rem;
+  background: #fff;
+}
 .multi-cat-option {
   min-height: 38px;
   display: inline-flex;
@@ -222,6 +228,12 @@
   width: 15px;
   height: 15px;
   accent-color: #c97b6b;
+}
+.multi-cat-empty {
+  flex: 1 0 100%;
+  padding: .55rem .2rem;
+  color: #9e7e76;
+  font-size: .82rem;
 }
 
 /* Upload Zone */
